@@ -1,0 +1,399 @@
+---
+title: "UROPSummer2026"
+format: html
+editor: visual
+---
+
+## 
+
+```{r}
+setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP")
+```
+
+```{r}
+library(tidyverse)
+library(latex2exp)
+library(readxl)
+library(egg)
+library(viridis)
+library(plotly)
+library(readr)
+library(neonUtilities) #download and manage NEON data (in-house)
+library(neonOS) #NEON OS data
+library(terra) #general geological data
+library(ggplot2)
+library(colorspace)
+library(viridis)
+```
+
+## Test Run - April 2024 Only
+
+```{r}
+zipsByProduct(
+  dpID = "DP4.00200.001",
+  site = "ONAQ",
+  startdate = "2024-04",
+  enddate = "2024-04",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP")
+getwd()
+
+```
+
+```{r}
+AprilEddy <- stackEddy(
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/NEON_eddy-flux/NEON.D15.ONAQ.DP4.00200.001.2024-04.basic",
+  level = "dp01",
+  var = "isoH2o",
+  avg = 30
+)
+
+```
+
+```{r}
+write.csv(Eddy$ONAQ, file = "ONAQAprilAtm.csv")
+
+```
+
+```{r}
+ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAprilAtm.csv")
+```
+
+## All
+
+### Atm
+
+```{r}
+zipsByProduct(
+  dpID = "DP4.00200.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+AllEddy <- stackEddy(
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ATMh5Files",
+  level = "dp01",
+  var = "isoH2o",
+  avg = 30
+)
+```
+
+```{r}
+write_csv(AllEddy$ONAQ, file = "ONAQAtmos.csv")
+```
+
+### Humidity
+
+```{r}
+ONAQhumidity <- loadByProduct(
+  dpID = "DP1.00098.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+  
+)
+
+ONAQHumid <- as_tibble(ONAQhumidity$RH_30min)
+write_csv(ONAQHumid, "ONAQRHumid.csv")
+```
+
+### Precipitation
+
+```{r}
+ONAQprecipitation <- loadByProduct(dpID = "DP1.00038.001", 
+                                   site = "ONAQ",
+                                   startdate = "2022-01",
+                                   enddate = "2024-12",
+                                   check.size = FALSE)
+
+ONAQPrecip <- as_tibble(ONAQprecipitation$wdi_isoPerSample)
+
+```
+
+```{r}
+write_csv(ONAQPrecip, "ONAQPrecip.csv")
+```
+
+# Start
+
+### Atmosphere
+
+```{r}
+ONAQTRUEAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAtmos.csv")
+```
+
+```{r}
+ONAQAtmos <- ONAQTRUEAtmos %>% 
+  rename(
+    "d18Omean" = "data.isoH2o.dlta18OH2o.mean",
+    "d2Hmean" = "data.isoH2o.dlta2HH2o.mean",
+    "StartTime" = "timeBgn",
+    "EndTime" = "timeEnd",
+    "d18Omin" = "data.isoH2o.dlta18OH2o.min",
+    "d18Omax" = "data.isoH2o.dlta18OH2o.max",
+    "d2Hmin" = "data.isoH2o.dlta2HH2o.min",
+    "d2Hmax" = "data.isoH2o.dlta2HH2o.max",
+    "d18OSampleNumber" = "data.isoH2o.dlta18OH2o.numSamp",
+    "d2HSampleNumber" = "data.isoH2o.dlta2HH2o.numSamp",
+    "PressureMean" = "data.isoH2o.pres.mean",
+    "PressureMin" = "data.isoH2o.pres.min",
+    "PressureMax" = "data.isoH2o.pres.max",
+    "PressureSampleNum" = "data.isoH2o.pres.numSamp",
+    "TempMean" = "data.isoH2o.temp.mean",
+    "TempMin" = "data.isoH2o.temp.min",
+    "TempMax" = "data.isoH2o.temp.max",
+    "DryMoleRatioMean" = "data.isoH2o.rtioMoleDryH2o.mean",
+    "DryMoleRatioMin" = "data.isoH2o.rtioMoleDryH2o.min",
+    "DryMoleRatioMax" = "data.isoH2o.rtioMoleDryH2o.max",
+    "WetMoleRatioMean" = "data.isoH2o.rtioMoleWetH2o.mean",
+    "WetMoleRatioMin" = "data.isoH2o.rtioMoleWetH2o.min",
+    "WetMoleRatioMax" = "data.isoH2o.rtioMoleWetH2o.max"
+    
+  )
+```
+
+```{r}
+#getting rid of unnecssary columns
+ONAQAtmos <- ONAQAtmos %>% 
+  select(horizontalPosition, verticalPosition, StartTime, EndTime, d18Omean, d18Omin, d18Omax, d18OSampleNumber, d2Hmean, d2Hmin, d2Hmax, d2HSampleNumber, PressureMean, PressureMin, PressureMax, PressureSampleNum, TempMean, TempMax, TempMin, DryMoleRatioMean, DryMoleRatioMin, DryMoleRatioMax, WetMoleRatioMean, WetMoleRatioMin, WetMoleRatioMax)
+
+#adding row numbers
+ONAQAtmos <- ONAQAtmos %>% 
+  mutate(
+    Row = row_number()
+  )
+
+#adding year of collection
+ONAQAtmos <- ONAQAtmos %>%
+  mutate(
+    Year = format(StartTime, "%Y")
+  )
+
+#getting rid of NA values
+ONAQAtmos <- ONAQAtmos %>% 
+  filter(d18OSampleNumber != 0)
+
+ONAQAtmos <- ONAQAtmos %>% 
+  filter(!is.na(d18Omean))
+ONAQAtmos <- ONAQAtmos %>% 
+  filter(!is.na(d2Hmean))
+```
+
+```{r}
+#ONAQAtmos <- ONAQAtmos %>% 
+  #mutate(
+    #humidityratio = ((WetMoleRatioMean / DryMoleRatioMean) * 0.677)
+  #)
+```
+
+### Checks
+
+```{r}
+vertcheck <- ONAQAtmos %>% 
+  filter(verticalPosition == "h2oMed")
+
+vertcheck <- vertcheck %>% 
+  filter(!is.na(d18Omean))
+
+```
+
+### Precipitation
+
+```{r}
+ONAQTRUEPrecip <- read_csv("ONAQPrecip.csv")
+
+```
+
+```{r}
+ONAQPrecip <- ONAQTRUEPrecip %>% 
+  rename(
+    "d18O" = "d18OWater",
+    "d2H" = "d2HWater",
+    "d18Osd" = "d18OsdWater",
+    "d2Hsd" = "d2HsdWater",
+    "d2Huncert" = "d2HWaterUncert",
+    "d18Ouncert" = "d18OWaterUncert"
+  )
+
+#adding row numbers
+ONAQPrecip <- ONAQPrecip %>% 
+  mutate(
+    Row = row_number()
+  )
+
+ONAQPrecip <- ONAQPrecip %>%
+  mutate(
+    Year = format(collectDate, "%Y")
+  )
+```
+
+```{r}
+
+ONAQPrecip <-  ONAQPrecip %>% 
+  select(collectDate, d18O, d2H, d18Osd, d2Hsd, d18Ouncert, d2Huncert, Row, Year)
+```
+
+### Humidity
+
+```{r}
+ONAQTRUEHumid <- read_csv("ONAQRHumid.csv")
+```
+
+```{r}
+ONAQHumid <- ONAQTRUEHumid %>% 
+  rename(
+    "StartTime" = "startDateTime",
+    "EndTime" = "endDateTime",
+    "RHMin" = "RHMinimum",
+    "RHMax" = "RHMaximum",
+    "tempRHmeanC" = "tempRHMean",
+    "tempRHmin" = "tempRHMinimum",
+    "tempRHmax" = "tempRHMaximum",
+    "dewTempMin" = "dewTempMinimum",
+    "dewTempMax" = "dewTempMaximum"
+  )
+
+
+```
+
+```{r}
+#adding row numbers
+ONAQHumid <- ONAQHumid %>% 
+  mutate(
+    Row = row_number()
+  )
+
+ONAQHumid <- ONAQHumid %>%
+  mutate(
+    Year = format(StartTime, "%Y"))
+```
+
+```{r}
+ONAQHumid <- ONAQHumid %>% 
+  select(
+    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHMean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Year
+  )
+```
+
+```{r}
+ONAQHumid40 <- ONAQHumid %>% 
+  filter(verticalPosition == "040")
+
+ONAQHumid0 <- ONAQHumid %>% 
+  filter(verticalPosition == "000")
+```
+
+### Analysis
+
+#### Fractionation Factor
+
+```{r}
+#Modifiying Atmos
+ONAQAtmos <- ONAQAtmos %>%
+  mutate(
+    Month = format(StartTime, "%m")
+  )
+
+#Modifying Precip
+ONAQPrecip <- ONAQPrecip %>% 
+  mutate(
+    Month = format(collectDate, "%m")
+  )
+```
+
+```{r}
+#Monthly averages
+ONAQAtmosMonthAvg <- ONAQAtmos %>%
+  group_by(Month) %>%  
+  summarise(AtmosAvgd18Omean = mean(d18Omean, na.rm = TRUE),
+            AtmosAvgd2Hmean = mean(d2Hmean, na.rm = TRUE))
+
+
+ONAQPrecipMonthAvg <- ONAQPrecip %>%
+  group_by(Month) %>% 
+  summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
+            PrecipAvgd2Hmean = mean(d2H, na.rm = TRUE))
+
+```
+
+```{r}
+ONAQd18OCombinedMonthAvg <- 
+  bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd18Omean), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
+  )
+
+ONAQd2HCombinedMonthAvg <- 
+  bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd2Hmean), ONAQAtmosMonthAvg %>% select(AtmosAvgd2Hmean)
+  )
+```
+
+```{r}
+ONAQd18OCombinedMonthAvg <- ONAQd18OCombinedMonthAvg %>% 
+  mutate(
+    FractionationFactor = (PrecipAvgd18Omean/AtmosAvgd18Omean))
+
+ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>% 
+  mutate(
+    FractionationFactor = (PrecipAvgd2Hmean/AtmosAvgd2Hmean))
+  
+```
+
+### Plots
+
+```{r}
+ONAQAtmplt1 <- ONAQAtmos %>% 
+  ggplot()+
+  aes(x = Year, y = d18Omean)+
+  geom_boxplot(fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+ONAQAtmplt1
+```
+
+```{r}
+ONAQAtmplt2 <- ONAQAtmos %>% 
+  ggplot()+
+  aes(x = d18Omean, y = d2Hmean)+
+  geom_point()+
+  geom_abline(slope = 7, intercept = 0, color = "#6FA458", linewidth = 1) +
+  geom_abline(slope = 7.45, intercept = -1.65, color = "#5B2C4D", linetype = 3, size = 2)+
+  theme_classic()
+
+ONAQAtmplt2
+```
+
+```{r}
+ONAQAtm2022 <- ONAQAtmos %>% 
+  filter(Year == 2022)  
+
+
+ONAQAtmHumidity2022 <- ONAQAtm2022 %>% 
+  ggplot()+
+  aes(x = StartTime,  y = humidityratio)+
+  geom_point()+
+  theme_classic()
+
+ONAQAtmHumidity2022
+```
+
+```{r}
+ONAQd18OCombinedMonthAvgPlt <- ONAQd18OCombinedMonthAvg %>% 
+  ggplot()+
+  geom_point(aes(x = Month, y = AtmosAvgd18Omean))+
+  geom_point(aes(x = Month, y = PrecipAvgd18Omean))+
+  theme_classic()
+
+ONAQd18OCombinedMonthAvgPlt
+```
