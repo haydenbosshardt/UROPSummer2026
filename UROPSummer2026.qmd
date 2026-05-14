@@ -7,7 +7,7 @@ editor: visual
 ## 
 
 ```{r}
-setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP")
+setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026")
 ```
 
 ```{r}
@@ -81,7 +81,7 @@ zipsByProduct(
 
 ```{r}
 AllEddy <- stackEddy(
-  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ATMh5Files",
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmosH5",
   level = "dp01",
   var = "isoH2o",
   avg = 30
@@ -131,7 +131,7 @@ write_csv(ONAQPrecip, "ONAQPrecip.csv")
 ### Atmosphere
 
 ```{r}
-ONAQTRUEAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAtmos.csv")
+ONAQTRUEAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmos.csv")
 ```
 
 ```{r}
@@ -258,7 +258,7 @@ ONAQHumid <- ONAQTRUEHumid %>%
     "EndTime" = "endDateTime",
     "RHMin" = "RHMinimum",
     "RHMax" = "RHMaximum",
-    "tempRHmeanC" = "tempRHMean",
+    "tempRHmean" = "tempRHMean",
     "tempRHmin" = "tempRHMinimum",
     "tempRHmax" = "tempRHMaximum",
     "dewTempMin" = "dewTempMinimum",
@@ -275,6 +275,7 @@ ONAQHumid <- ONAQHumid %>%
     Row = row_number()
   )
 
+#adding year number
 ONAQHumid <- ONAQHumid %>%
   mutate(
     Year = format(StartTime, "%Y"))
@@ -283,7 +284,7 @@ ONAQHumid <- ONAQHumid %>%
 ```{r}
 ONAQHumid <- ONAQHumid %>% 
   select(
-    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHMean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Year
+    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHmean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Year
   )
 ```
 
@@ -298,6 +299,14 @@ ONAQHumid0 <- ONAQHumid %>%
 ### Analysis
 
 #### Fractionation Factor
+
+$$
+
+$$
+
+$$
+\alpha = \frac{R_l}{R_v}
+$$
 
 ```{r}
 #Modifiying Atmos
@@ -339,14 +348,92 @@ ONAQd2HCombinedMonthAvg <-
 ```
 
 ```{r}
+ONAQd18OCombinedMonthAvg <- 
+  bind_cols(Weightedd18O %>% select(Month, Weightedd18O), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
+  )
+
+```
+
+```{r}
 ONAQd18OCombinedMonthAvg <- ONAQd18OCombinedMonthAvg %>% 
   mutate(
-    FractionationFactor = (PrecipAvgd18Omean/AtmosAvgd18Omean))
+    FractionationFactor = (Weightedd18O/AtmosAvgd18Omean))
 
 ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>% 
   mutate(
     FractionationFactor = (PrecipAvgd2Hmean/AtmosAvgd2Hmean))
   
+```
+
+#### Precipitation (amount weighted) 
+
+```{r}
+ONAQprecipitationamount <- loadByProduct(
+  dpID = "DP1.00044.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+ONAQPrecipAmountDaily <- as_tibble(ONAQprecipitationamount$WEIPRE_daily)
+
+ONAQPrecipAmount60 <- as_tibble(ONAQprecipitationamount$WEIPRE_60min)
+```
+
+```{r}
+write_csv(ONAQPrecipAmount60, "ONAQPrecipAmount60.csv")
+
+write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
+
+```
+
+```{r}
+ONAQPrecipAmount60 <- read_csv("ONAQPrecipAmount60.csv")
+
+ONAQPrecipAmountDaily <- read_csv("ONAQPrecipAmountDaily.csv")
+```
+
+```{r}
+ONAQPrecipAmountCompare <- ONAQPrecipAmountDaily %>% 
+  filter(precipBulk != 0)
+```
+
+$$
+\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}
+$$
+
+```{r}
+#Adding Month
+ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
+  mutate(
+    Month = format(date, "%m")
+  )
+```
+
+```{r}
+ONAQPrecipAmountCompareAvg <- ONAQPrecipAmountCompare %>%
+  group_by(Month) %>% 
+  summarise(PrecipAmountAvg = mean(precipBulk, na.rm = TRUE))
+```
+
+```{r}
+ONAQPrecipAmountCombinedMonthAvg <-
+  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Month, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd18Omean)
+  )
+```
+
+```{r}
+Weightedd18O <- ONAQPrecipAmountCombinedMonthAvg %>%
+  group_by(Month) %>%
+  summarise(
+    Weightedd18O =
+      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
+      sum(PrecipAmountAvg, na.rm = TRUE)
+  )
 ```
 
 ### Plots
