@@ -15,7 +15,6 @@ library(tidyverse)
 library(latex2exp)
 library(readxl)
 library(egg)
-library(viridis)
 library(plotly)
 library(readr)
 library(neonUtilities) #download and manage NEON data (in-house)
@@ -175,10 +174,10 @@ ONAQAtmos <- ONAQAtmos %>%
     Row = row_number()
   )
 
-#adding year of collection
+#adding date of collection (20XX-XX)
 ONAQAtmos <- ONAQAtmos %>%
   mutate(
-    Year = format(StartTime, "%Y")
+    Date = format(StartTime, "%Y-%m")
   )
 
 #getting rid of NA values
@@ -201,11 +200,11 @@ ONAQAtmos <- ONAQAtmos %>%
 ### Checks
 
 ```{r}
-vertcheck <- ONAQAtmos %>% 
-  filter(verticalPosition == "h2oMed")
+#vertcheck <- ONAQAtmos %>% 
+  #filter(verticalPosition == "h2oMed")
 
-vertcheck <- vertcheck %>% 
-  filter(!is.na(d18Omean))
+#vertcheck <- vertcheck %>% 
+  #filter(!is.na(d18Omean))
 
 ```
 
@@ -233,16 +232,17 @@ ONAQPrecip <- ONAQPrecip %>%
     Row = row_number()
   )
 
+#adding date (20XX-XX)
 ONAQPrecip <- ONAQPrecip %>%
   mutate(
-    Year = format(collectDate, "%Y")
+    Date = format(collectDate, "%Y-%m")
   )
 ```
 
 ```{r}
 
 ONAQPrecip <-  ONAQPrecip %>% 
-  select(collectDate, d18O, d2H, d18Osd, d2Hsd, d18Ouncert, d2Huncert, Row, Year)
+  select(collectDate, d18O, d2H, d18Osd, d2Hsd, d18Ouncert, d2Huncert, Row, Date)
 ```
 
 ### Humidity
@@ -275,28 +275,175 @@ ONAQHumid <- ONAQHumid %>%
     Row = row_number()
   )
 
-#adding year number
+#adding date (20XX-XX)
 ONAQHumid <- ONAQHumid %>%
   mutate(
-    Year = format(StartTime, "%Y"))
-```
+    Date = format(StartTime, "%Y-%m"))
 
-```{r}
+#choosing wanted columns to keep in df
 ONAQHumid <- ONAQHumid %>% 
   select(
-    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHmean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Year
+    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHmean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Date
   )
 ```
 
 ```{r}
+
+#data frame for 40 ft tower measurment of humidity
 ONAQHumid40 <- ONAQHumid %>% 
   filter(verticalPosition == "040")
 
+#data frame for 0ft tower measurment of humidity
 ONAQHumid0 <- ONAQHumid %>% 
   filter(verticalPosition == "000")
 ```
 
 ### Analysis
+
+#### Precipitation (amount weighted)
+
+$$
+\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}
+$$
+
+-----------------------
+
+##### SKIPPPPP
+
+```{r}
+ONAQprecipitationamount <- loadByProduct(
+  dpID = "DP1.00044.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+ONAQPrecipAmountDaily <- as_tibble(ONAQprecipitationamount$WEIPRE_daily)
+
+ONAQPrecipAmount60 <- as_tibble(ONAQprecipitationamount$WEIPRE_60min)
+```
+
+```{r}
+write_csv(ONAQPrecipAmount60, "ONAQPrecipAmount60.csv")
+
+write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
+```
+
+--------------------------
+
+##### START!
+
+```{r}
+ONAQPrecipAmount60 <- read_csv("ONAQPrecipAmount60.csv")
+
+ONAQPrecipAmountDaily <- read_csv("ONAQPrecipAmountDaily.csv")
+```
+
+```{r}
+#in daily precip measurments df - get rid of any days that have 0 precipitation
+ONAQPrecipAmountCompare <- ONAQPrecipAmountDaily %>% 
+  filter(precipBulk != 0)
+```
+
+```{r}
+ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
+  rename(
+    "CollectionDate" = "date"
+  )
+```
+
+```{r}
+#Adding Date
+ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
+  mutate(
+    Date = format(CollectionDate, "%Y-%m")
+  )
+
+
+```
+
+```{r}
+#calculating average precipitation amounts per month
+ONAQPrecipAmountCompareAvg <- ONAQPrecipAmountCompare %>%
+  group_by(Date) %>% 
+  summarise(PrecipAmountAvg = mean(precipBulk, na.rm = TRUE))
+
+#adding back in 2024-06
+ONAQPrecipAmountCompareAvg %>%  add_row(Date = "2024-06", PrecipAmountAvg = 0)
+
+```
+
+##### Sample Plot:
+
+```{r}
+ViewPrecipAmountplt <- ONAQPrecipAmountCompareAvg %>% 
+  ggplot()+
+  aes(x = Date, y = PrecipAmountAvg)+
+  geom_point()+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45))
+
+ViewPrecipAmountplt
+
+ViewPrecipAmount2022plt <- ONAQPrecipAmountCompareAvg %>%
+  filter(substr(Date, 1, 4) == "2022") %>% 
+  ggplot()+
+  aes(x = Date, y = PrecipAmountAvg)+
+  geom_point()+
+  theme_minimal()
+  
+ViewPrecipAmount2022plt
+
+
+```
+
+```{r}
+#average each month of precipitation isotopes for d18O and d2H
+ONAQPrecipMonthAvg <- ONAQPrecip %>%
+  group_by(Date) %>% 
+  summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
+            PrecipAvgd2Hmean = mean(d2H, na.rm = TRUE))
+```
+
+```{r}
+#adding in missing months to precip isotope values
+ONAQPrecipMonthAvg %>% add_row(Date = "2022-02", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
+ONAQPrecipMonthAvg %>% add_row(Date = "2024-06", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
+
+#combining precip amounts and precip isotopes into the same df (d18O)
+ONAQPrecipAmountd18OCombinedMonthAvg <-
+  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd18Omean)
+  )
+
+#combining precip amounts and precip isotopes into the same df (d2H)
+ONAQPrecipAmountd2HCombinedMonthAvg <-
+  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd2Hmean)
+  )
+```
+
+```{r}
+#calculating amount weighted isotopes for d18O
+ONAQPrecipWeightedd18O <- ONAQPrecipAmountCombinedMonthAvg %>%
+  group_by(Date) %>%
+  summarise(
+    d18OWeighted =
+      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
+      sum(PrecipAmountAvg, na.rm = TRUE)
+  )
+
+#calculating amount weighted isotopes for d2H
+ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
+  group_by(Date) %>%
+  summarise(
+    d2HWeighted =
+      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
+      sum(PrecipAmountAvg, na.rm = TRUE)
+  )
+```
 
 #### Fractionation Factor
 
@@ -307,20 +454,6 @@ $$
 $$
 \alpha = \frac{R_l}{R_v}
 $$
-
-```{r}
-#Modifiying Atmos
-ONAQAtmos <- ONAQAtmos %>%
-  mutate(
-    Month = format(StartTime, "%m")
-  )
-
-#Modifying Precip
-ONAQPrecip <- ONAQPrecip %>% 
-  mutate(
-    Month = format(collectDate, "%m")
-  )
-```
 
 ```{r}
 #Monthly averages
@@ -363,77 +496,6 @@ ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>%
   mutate(
     FractionationFactor = (PrecipAvgd2Hmean/AtmosAvgd2Hmean))
   
-```
-
-#### Precipitation (amount weighted) 
-
-```{r}
-ONAQprecipitationamount <- loadByProduct(
-  dpID = "DP1.00044.001",
-  site = "ONAQ",
-  startdate = "2022-01",
-  enddate = "2024-12",
-  package = "basic",
-  check.size = FALSE
-)
-```
-
-```{r}
-ONAQPrecipAmountDaily <- as_tibble(ONAQprecipitationamount$WEIPRE_daily)
-
-ONAQPrecipAmount60 <- as_tibble(ONAQprecipitationamount$WEIPRE_60min)
-```
-
-```{r}
-write_csv(ONAQPrecipAmount60, "ONAQPrecipAmount60.csv")
-
-write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
-
-```
-
-```{r}
-ONAQPrecipAmount60 <- read_csv("ONAQPrecipAmount60.csv")
-
-ONAQPrecipAmountDaily <- read_csv("ONAQPrecipAmountDaily.csv")
-```
-
-```{r}
-ONAQPrecipAmountCompare <- ONAQPrecipAmountDaily %>% 
-  filter(precipBulk != 0)
-```
-
-$$
-\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}
-$$
-
-```{r}
-#Adding Month
-ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
-  mutate(
-    Month = format(date, "%m")
-  )
-```
-
-```{r}
-ONAQPrecipAmountCompareAvg <- ONAQPrecipAmountCompare %>%
-  group_by(Month) %>% 
-  summarise(PrecipAmountAvg = mean(precipBulk, na.rm = TRUE))
-```
-
-```{r}
-ONAQPrecipAmountCombinedMonthAvg <-
-  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Month, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd18Omean)
-  )
-```
-
-```{r}
-Weightedd18O <- ONAQPrecipAmountCombinedMonthAvg %>%
-  group_by(Month) %>%
-  summarise(
-    Weightedd18O =
-      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
-      sum(PrecipAmountAvg, na.rm = TRUE)
-  )
 ```
 
 ### Plots
