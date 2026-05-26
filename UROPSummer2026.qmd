@@ -46,9 +46,9 @@ getwd()
 
 ```{r}
 AprilEddy <- stackEddy(
-  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/NEON_eddy-flux/NEON.D15.ONAQ.DP4.00200.001.2024-04.basic",
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/filesToStack00200/AprilSampleh5",
   level = "dp01",
-  var = "isoH2o",
+  var = "tempAirTop",
   avg = 30
 )
 
@@ -65,7 +65,7 @@ ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONA
 
 ## All
 
-### Atm
+### Atm and Air Temp
 
 ```{r}
 zipsByProduct(
@@ -79,16 +79,47 @@ zipsByProduct(
 ```
 
 ```{r}
-AllEddy <- stackEddy(
+AtmosEddy <- stackEddy(
   filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmosH5",
   level = "dp01",
   var = "isoH2o",
   avg = 30
 )
+
+AirTempEddy <- stackEddy(
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmosH5",
+  level = "dp01",
+  var = "tempAirTop",
+  avg = 30
+)
 ```
 
 ```{r}
-write_csv(AllEddy$ONAQ, file = "ONAQAtmos.csv")
+write_csv(AtmosEddy$ONAQ, file = "ONAQAtmos.csv")
+write_csv(AirTempEddy$ONAQ, file = "ONAQAirTemp.csv")
+```
+
+### Soil Water Iso
+
+```{r}
+zipsByProduct(
+  dpID = "DP1.10086.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+  )
+```
+
+```{r}
+SoilIsoEddy <- stackEddy(
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/filesToStack10086",
+  level = "dp01",
+  var = "soil",
+  avg = 30
+  
+)
 ```
 
 ### Humidity
