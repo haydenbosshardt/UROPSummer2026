@@ -23,6 +23,11 @@ library(terra) #general geological data
 library(ggplot2)
 library(colorspace)
 library(viridis)
+library(sf)
+library(tigris)
+library(leaflet)
+library(maps)
+library(crosstalk)
 ```
 
 ## Test Run - April 2024 Only
@@ -118,9 +123,10 @@ SoilIsoEddy <- stackEddy(
   level = "dp01",
   var = "soil",
   avg = 30
-  
 )
 ```
+
+Need to add in csv file for this \*maybe
 
 ### Humidity
 
@@ -242,7 +248,7 @@ ONAQAtmos <- ONAQAtmos %>%
 ### Precipitation
 
 ```{r}
-ONAQTRUEPrecip <- read_csv("ONAQPrecip.csv")
+ONAQTRUEPrecip <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecip.csv")
 
 ```
 
@@ -279,7 +285,7 @@ ONAQPrecip <-  ONAQPrecip %>%
 ### Humidity
 
 ```{r}
-ONAQTRUEHumid <- read_csv("ONAQRHumid.csv")
+ONAQTRUEHumid <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQRHumid.csv")
 ```
 
 ```{r}
@@ -289,13 +295,27 @@ ONAQHumid <- ONAQTRUEHumid %>%
     "EndTime" = "endDateTime",
     "RHMin" = "RHMinimum",
     "RHMax" = "RHMaximum",
-    "tempRHmean" = "tempRHMean",
-    "tempRHmin" = "tempRHMinimum",
-    "tempRHmax" = "tempRHMaximum",
+    "MeanTempC" = "tempRHMean",
+    "MinTempC" = "tempRHMinimum",
+    "MaxTempC" = "tempRHMaximum",
     "dewTempMin" = "dewTempMinimum",
     "dewTempMax" = "dewTempMaximum"
   )
 
+
+```
+
+```{r}
+
+#adding fahrenheit
+ONAQHumid <- ONAQHumid %>% 
+  mutate(
+    Temp_F = MeanTempC * (9/5) + 32)
+
+#adding kelvin
+ONAQHumid <- ONAQHumid %>% 
+  mutate(
+    Temp_Kelvin = MeanTempC + 273.15)
 
 ```
 
@@ -314,7 +334,7 @@ ONAQHumid <- ONAQHumid %>%
 #choosing wanted columns to keep in df
 ONAQHumid <- ONAQHumid %>% 
   select(
-    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, tempRHmean, tempRHmin, tempRHmax, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Date
+    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, MeanTempC, MinTempC, MaxTempC, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Date, Temp_F, Temp_Kelvin
   )
 ```
 
@@ -329,15 +349,334 @@ ONAQHumid0 <- ONAQHumid %>%
   filter(verticalPosition == "000")
 ```
 
+### Utah Lake Isotopes
+
+```{r}
+AllUtahCountyData <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
+```
+
+```{r}
+#renaming some columns
+AllUtahCountyData %>% rename(
+  "Elevation" = "Elevation_mabsl"
+)
+```
+
+```{r}
+#creating df with no Tap samples
+UtahLakeSamples <- AllUtahCountyData %>% 
+  filter(!Type %in% c("Tap", "Milk", "Sprinkler"))
+
+#creating lake only df
+LakeOnlySamples <- AllUtahCountyData %>% 
+  filter(Type == "Lake_or_pond")
+
+#creating lake + river
+
+RiverandLakeSamples <- AllUtahCountyData %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream")
+
+#creating lake + river + spring
+
+LakeRiverSpringSamples <- UtahLakeSamples %>% 
+  filter(Type !="Ground")
+```
+
+```{r}
+#box plot of samples by year
+#all samples (except tap
+#adding date (20XX-XX)
+UtahLakeSamples <- UtahLakeSamples %>%
+  mutate(
+    Date = format(Collection_Date, "%Y-%m"))
+
+UtahLakeSamples <- UtahLakeSamples %>% 
+  mutate(
+    Year = format(Collection_Date, "%Y")
+  )
+
+UtahLakeSamples <- UtahLakeSamples %>% 
+  mutate(
+    Row = row_number()
+  )
+
+#creating DONOTUSE row
+UtahLakeSamples <- UtahLakeSamples %>% 
+  mutate(
+    DONOTUSE = FALSE
+  )
+
+#filtering out rows with DONOTUSE
+UtahLakeSamples <- UtahLakeSamples %>% 
+      mutate(DONOTUSE = Row %in% c( 3, 29, 38, 104, 105, 106, 108
+          , TRUE, DONOTUSE))
+```
+
+```{r}
+UtahLakeDF <- UtahLakeSamples %>%
+  group_by(Date) %>% 
+  summarise(across(where(is.numeric), mean,na.rm = TRUE))
+```
+
+#### Boxplots
+
+```{r}
+UtahLaked18Oplt <- UtahLakeSamples %>% 
+  filter(DONOTUSE = FALSE) %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+UtahLaked18Oplt
+```
+
+```{r}
+#lake only samples
+LakeOnlyd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeOnlyd18Oplt
+
+
+#Lake and river only
+LakeandRiverd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeandRiverd18Oplt
+
+
+#Lake, River, Spring
+LakeRiverSpringd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeRiverSpringd18Oplt
+
+LakeSpringd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeSpringd18Oplt
+```
+
+```{r}
+#lake only samples
+LakeOnlyd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE = FALSE) %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeOnlyd2Hplt
+
+
+#Lake and river only
+LakeandRiverd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE = FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeandRiverd2Hplt
+
+
+#Lake, River, Spring
+LakeRiverSpringd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE = FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeRiverSpringd2Hplt
+
+LakeSpringd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeSpringd2Hplt
+```
+
+#### Map Plot
+
+```{r}
+UtahLakeSamples_Filtered <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeSamples_sf <- st_as_sf(
+  UtahLakeSamples_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
+```
+
+```{r}
+pal <- colorFactor(
+  palette = "Set1",
+  domain = UtahLakeSamples$Year
+)
+```
+
+```{r}
+# Create shared data object
+UtahLakeSharedSamples <- SharedData$new(UtahLakeSamples_sf)
+
+# Create color palette by year
+pal <- colorFactor(
+  palette = "Set1",
+  domain = UtahLakeSamples_sf$Year
+)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Type",
+    label = "Sample Type",
+    sharedData = UtahLakeSharedSamples,
+    group = ~Type
+  ),
+  
+  leaflet(UtahLakeSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal(Year),
+      fillColor = ~pal(Year),
+      
+      popup = ~paste(
+        "Type:", Type,
+        "<br>Year:", Year,
+        "Row:", Row
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal,
+      values = ~Year,
+      title = "Year"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+#### d2H v. d18O
+
+```{r}
+#all samples
+Alld2Hvd18Oplt <- UtahLakeSamples %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+Alld2Hvd18Oplt
+
+#lake samples only
+Laked2Hvd18Oplt <- UtahLakeSamples %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+Laked2Hvd18Oplt
+
+#lake and river samples
+
+LakeandRiverd2Hvd18Oplt <- UtahLakeSamples %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+LakeandRiverd2Hvd18Oplt
+
+#Lake, River, and Spring
+
+LakeRiverSpringd2Hvd18Oplt <- UtahLakeSamples %>%
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+LakeRiverSpringd2Hvd18Oplt
+```
+
+### Matos et al. Graphs
+
 ### Analysis
 
 #### Precipitation (amount weighted)
 
-$$
-\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}
-$$
+$$\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}$$
 
------------------------
+------------------------------------------------------------------------
 
 ##### SKIPPPPP
 
@@ -364,14 +703,14 @@ write_csv(ONAQPrecipAmount60, "ONAQPrecipAmount60.csv")
 write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
 ```
 
---------------------------
+------------------------------------------------------------------------
 
 ##### START!
 
 ```{r}
-ONAQPrecipAmount60 <- read_csv("ONAQPrecipAmount60.csv")
+ONAQPrecipAmount60 <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmount60.csv")
 
-ONAQPrecipAmountDaily <- read_csv("ONAQPrecipAmountDaily.csv")
+ONAQPrecipAmountDaily <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmountDaily.csv")
 ```
 
 ```{r}
@@ -478,13 +817,11 @@ ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
 
 #### Fractionation Factor
 
-$$
+\$\$
 
-$$
+\$\$
 
-$$
-\alpha = \frac{R_l}{R_v}
-$$
+$$\alpha = \frac{R_l}{R_v}$$
 
 ```{r}
 #Monthly averages
