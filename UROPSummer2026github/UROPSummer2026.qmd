@@ -351,53 +351,44 @@ ONAQHumid0 <- ONAQHumid %>%
 
 ### Utah Lake Isotopes
 
+#### From WaterIsotpes.org
+
 ```{r}
 AllUtahCountyData <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
 ```
 
 ```{r}
 #renaming some columns
-AllUtahCountyData %>% rename(
-  "Elevation" = "Elevation_mabsl"
+AllUtahCountyData <- AllUtahCountyData %>%
+  rename(
+  "Elevation" = "Elevation_mabsl",
+  "SD2H" = "d2H_Analytical_SD",
+  "SD18O" = "d18O_Analytical_SD"
 )
 ```
 
 ```{r}
-#creating df with no Tap samples
-UtahLakeSamples <- AllUtahCountyData %>% 
-  filter(!Type %in% c("Tap", "Milk", "Sprinkler"))
-
-#creating lake only df
-LakeOnlySamples <- AllUtahCountyData %>% 
-  filter(Type == "Lake_or_pond")
-
-#creating lake + river
-
-RiverandLakeSamples <- AllUtahCountyData %>% 
-  filter(Type == "Lake_or_pond" | Type == "River_or_stream")
-
-#creating lake + river + spring
-
-LakeRiverSpringSamples <- UtahLakeSamples %>% 
-  filter(Type !="Ground")
+AllUtahCountyData <- AllUtahCountyData %>% 
+  select(-Start_Date, -Start_Time_Zone, -Collection_Time_Zone, -Phase, -Depth_meters, -Sample_Comments, -D17O, -D17O_Analytical_SD, -WI_Analysis_Source, -Site_Comments,  )
 ```
 
 ```{r}
-#box plot of samples by year
-#all samples (except tap
+#creating main df
+UtahLakeSamples <- AllUtahCountyData %>% 
+  filter(!Type %in% c("Tap", "Milk", "Sprinkler", "Ground"))
+
+```
+
+```{r}
 #adding date (20XX-XX)
 UtahLakeSamples <- UtahLakeSamples %>%
   mutate(
     Date = format(Collection_Date, "%Y-%m"))
 
+#adding Year column
 UtahLakeSamples <- UtahLakeSamples %>% 
   mutate(
     Year = format(Collection_Date, "%Y")
-  )
-
-UtahLakeSamples <- UtahLakeSamples %>% 
-  mutate(
-    Row = row_number()
   )
 
 #creating DONOTUSE row
@@ -406,34 +397,144 @@ UtahLakeSamples <- UtahLakeSamples %>%
     DONOTUSE = FALSE
   )
 
-#filtering out rows with DONOTUSE
-UtahLakeSamples <- UtahLakeSamples %>% 
-      mutate(DONOTUSE = Row %in% c( 3, 29, 38, 104, 105, 106, 108
+```
+
+#### From Zanazzi
+
+```{r}
+UtahLakeZanazziPath <- "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/UtahLake2014-2016Zanazzi.xlsx"
+
+sheets <- excel_sheets(UtahLakeZanazziPath)
+
+for(sheet in sheets) {
+  
+  UtahLakeZanazziSheet <- read_excel(UtahLakeZanazziPath, sheet = sheet)
+  csv_name <- paste0(sheet, ".csv")
+  write.csv(UtahLakeZanazziSheet, csv_name, row.names = FALSE)
+}
+
+UtahLakeZanazziS2 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S2.csv")
+
+UtahLakeZanazziS3 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S3.csv")
+
+UtahLakeZanazziS4 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S4.csv")
+
+UtahLakeZanazziS5 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S5.csv")
+```
+
+```{r}
+UtahLakeZanazziS1 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S1.csv")
+```
+
+```{r}
+
+
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+  rename(
+    "Site_Name" = "...2",
+    "Latitude" = "...3",
+    "Longitude" = "...4",
+    "Collection_Date" = "...5",
+    "d2H" = "...6",
+    "SD2H" = "...7",
+    "d18O" = "...8",
+    "SD18O" = "...9"
+  )
+
+
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+  filter(!is.na(d2H)) 
+
+UtahLakeZanazziS1 <- UtahLakeZanazziS1[-c(1), ]
+
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% select(-`Table S1. Biweekly Samples`)
+```
+
+```{r}
+
+UtahLakeZanazziS1$Collection_Date <- as.numeric(UtahLakeZanazziS1$Collection_Date)
+
+UtahLakeZanazziS1$Collection_Date <- as.Date(UtahLakeZanazziS1$Collection_Date, origin = "1899-12-30")
+
+```
+
+```{r}
+
+#adding date (20XX-XX)
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
+  mutate(
+    Date = format(Collection_Date, "%Y-%m"))
+
+#adding Year column
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
+  mutate(
+    Year = format(Collection_Date, "%Y")
+  )
+#making year not a continuous value
+UtahLakeZanazziS1$Year <- as.factor(UtahLakeZanazziS1$Year)
+
+#making everything numeric
+UtahLakeZanazziS1$d18O <- as.numeric(UtahLakeZanazziS1$d18O)
+
+UtahLakeZanazziS1$d2H <- as.numeric(UtahLakeZanazziS1$d2H)
+
+UtahLakeZanazziS1$Latitude <- as.numeric(UtahLakeZanazziS1$Latitude)
+
+UtahLakeZanazziS1$Longitude <- as.numeric(UtahLakeZanazziS1$Longitude)
+
+UtahLakeZanazziS1$SD2H <- as.numeric(UtahLakeZanazziS1$SD2H)
+
+UtahLakeZanazziS1$SD18O <- as.numeric(UtahLakeZanazziS1$SD18O)
+
+
+#creating type row
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+  mutate(Type = "Zanazzi")
+
+#creating DONOTUSE row
+UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
+  mutate(
+    DONOTUSE = FALSE
+  )
+
+```
+
+#### Combining Zanazzi with water isotope
+
+```{r}
+#creating combined df
+CombinedDF <- bind_rows(UtahLakeSamples, UtahLakeZanazziS1) %>% 
+  mutate(
+    Row = row_number()
+  )
+```
+
+```{r}
+#getting rid of far away sites or other weird #s
+CombinedDF <- CombinedDF %>% 
+      mutate(DONOTUSE = Row %in% c(9, 19, 7, 18, 8, 17, 21 
           , TRUE, DONOTUSE))
 ```
 
-```{r}
-UtahLakeDF <- UtahLakeSamples %>%
-  group_by(Date) %>% 
-  summarise(across(where(is.numeric), mean,na.rm = TRUE))
-```
-
-#### Boxplots
+##### Boxplots
 
 ```{r}
+#Water Isotopes.org
+#all data (includes ground water)
 UtahLaked18Oplt <- UtahLakeSamples %>% 
-  filter(DONOTUSE = FALSE) %>% 
+  filter(DONOTUSE == FALSE) %>% 
   ggplot()+
   aes(x = Year, y = d18O)+
   geom_boxplot(
     fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
   )+
+  labs(
+    title = "All WI.org Samples"
+  )+
   theme_classic()
 
 UtahLaked18Oplt
-```
 
-```{r}
 #lake only samples
 LakeOnlyd18Oplt <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) %>% 
@@ -442,6 +543,9 @@ LakeOnlyd18Oplt <- UtahLakeSamples %>%
   aes(x = Year, y = d18O)+
   geom_boxplot(
     fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "WI.org Lake Only Samples"
   )+
   #scale_y_continuous(limits = c(-17, -2))+
   theme_classic()
@@ -458,6 +562,9 @@ LakeandRiverd18Oplt <- UtahLakeSamples %>%
   geom_boxplot(
     fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
   )+
+  labs(
+    title = "WI.org Lake and River Samples"
+  )+
   #scale_y_continuous(limits = c(-17, -2))+
   theme_classic()
 
@@ -473,6 +580,9 @@ LakeRiverSpringd18Oplt <- UtahLakeSamples %>%
   geom_boxplot(
     fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
   )+
+  labs(
+    title = "WI.org Lake, River, and Spring Samples"
+  )+
   #scale_y_continuous(limits = c(-17, -2))+
   theme_classic()
 
@@ -486,16 +596,57 @@ LakeSpringd18Oplt <- UtahLakeSamples %>%
   geom_boxplot(
     fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
   )+
+  labs(
+    title = "WI.org Lake and Spring Samples"
+  )+
   #scale_y_continuous(limits = c(-17, -2))+
   theme_classic()
 
 LakeSpringd18Oplt
+
+#Zanazzi
+#All samples
+ZanazziSamplesd18Oplt <- UtahLakeZanazziS1 %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "All Zanazzi Samples"
+  )+
+  theme_minimal()
+
+ZanazziSamplesd18Oplt
+
+CombinedSamplesd18Oplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "Collected Utah Lake Samples 1991 - 2024"
+  )+
+  theme_classic()
+
+CombinedSamplesd18Oplt
+```
+
+```{r}
+ggsave(
+  "CombinedSamplesPlot3.pdf",
+  plot = CombinedSamplesd18Oplt,
+  width = 8,
+  height = 6
+)
 ```
 
 ```{r}
 #lake only samples
 LakeOnlyd2Hplt <- UtahLakeSamples %>%
-  filter(DONOTUSE = FALSE) %>% 
+  filter(DONOTUSE == FALSE) %>% 
   filter(Type == "Lake_or_pond") %>% 
   ggplot()+
   aes(x = Year, y = d2H)+
@@ -509,7 +660,7 @@ LakeOnlyd2Hplt
 
 #Lake and river only
 LakeandRiverd2Hplt <- UtahLakeSamples %>%
-  filter(DONOTUSE = FALSE) %>% 
+  filter(DONOTUSE == FALSE) %>% 
   filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
   ggplot()+
   aes(x = Year, y = d2H)+
@@ -523,7 +674,7 @@ LakeandRiverd2Hplt
 
 #Lake, River, Spring
 LakeRiverSpringd2Hplt <- UtahLakeSamples %>%
-  filter(DONOTUSE = FALSE) %>% 
+  filter(DONOTUSE == FALSE) %>% 
   filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
   ggplot()+
   aes(x = Year, y = d2H)+
@@ -534,22 +685,54 @@ LakeRiverSpringd2Hplt <- UtahLakeSamples %>%
 
 LakeRiverSpringd2Hplt
 
+#lake and spring samples only
 LakeSpringd2Hplt <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) %>% 
   filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
   ggplot()+
   aes(x = Year, y = d2H)+
   geom_boxplot(
-    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
   )+
   theme_classic()
 
 LakeSpringd2Hplt
+
+#all zanazzi samples
+ZanazziSamplesd2Hplt <- UtahLakeZanazziS1 %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "All Zanazzi Samples"
+  )+
+  theme_minimal()
+
+ZanazziSamplesd2Hplt
+
+#combined samples
+CombinedSamplesd2Hplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "Collected Utah Lake Samples 1991 - 2024"
+  )+
+  theme_classic()
+
+CombinedSamplesd2Hplt
 ```
 
-#### Map Plot
+##### Map Plot
 
 ```{r}
+#WI.org only
 UtahLakeSamples_Filtered <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) 
 
@@ -558,24 +741,51 @@ UtahLakeSamples_sf <- st_as_sf(
   UtahLakeSamples_Filtered,
   coords = c("Longitude", "Latitude"),
              crs = 4326)
+#zanazzi only
+UtahLakeZanazzi_Filtered <- UtahLakeZanazziS1 %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeZanazzi_sf <- st_as_sf(
+  UtahLakeZanazzi_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
+
+#combined
+UtahLakeCombined_Filtered <- CombinedDF %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeCombined_sf <- st_as_sf(
+  UtahLakeCombined_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
 ```
 
 ```{r}
-pal <- colorFactor(
-  palette = "Set1",
-  domain = UtahLakeSamples$Year
-)
-```
-
-```{r}
-# Create shared data object
-UtahLakeSharedSamples <- SharedData$new(UtahLakeSamples_sf)
-
-# Create color palette by year
-pal <- colorFactor(
-  palette = "Set1",
+#WI.org
+pal1 <- colorFactor(
+  palette = "Set2",
   domain = UtahLakeSamples_sf$Year
 )
+
+#zanazzi
+pal2 <- colorFactor(
+  palette = "Set2",
+  domain = UtahLakeZanazzi_sf$Site_Name
+)
+
+
+pal3 <- colorFactor(
+  palette = "Set2",
+  domain = UtahLakeCombined_sf$Type
+)
+```
+
+```{r}
+#WI.org
+# Create shared data object
+UtahLakeSharedSamples <- SharedData$new(UtahLakeSamples_sf)
 
 # Interactive filtered map
 bscols(
@@ -598,19 +808,18 @@ bscols(
       weight = 1,
       fillOpacity = 0.8,
       
-      color = ~pal(Year),
-      fillColor = ~pal(Year),
+      color = ~pal1(Year),
+      fillColor = ~pal1(Year),
       
       popup = ~paste(
         "Type:", Type,
-        "<br>Year:", Year,
-        "Row:", Row
+        "<br>Year:", Year
       )
     ) %>%
     
     addLegend(
       position = "bottomright",
-      pal = pal,
+      pal = pal1,
       values = ~Year,
       title = "Year"
     ) %>%
@@ -623,7 +832,108 @@ bscols(
 )
 ```
 
-#### d2H v. d18O
+```{r}
+#Zanazzi
+# Create shared data object
+UtahLakeZanazziSharedSamples <- SharedData$new(UtahLakeZanazzi_sf)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Year",
+    label = "Year",
+    sharedData = UtahLakeZanazziSharedSamples,
+    group = ~Year
+  ),
+  
+  leaflet(UtahLakeZanazziSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal2(Site_Name),
+      fillColor = ~pal2(Site_Name),
+      
+      popup = ~paste(
+        "Site_Name:", Site_Name,
+        "<br>Year:", Year
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal2,
+      values = ~Site_Name,
+      title = "Site_Name"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+```{r}
+#Combined
+# Create shared data object
+UtahLakeCombinedSharedSamples <- SharedData$new(UtahLakeCombined_sf)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Type",
+    label = "Sample Type",
+    sharedData = UtahLakeCombinedSharedSamples,
+    group = ~Type
+  ),
+  
+  leaflet(UtahLakeCombinedSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal3(Type),
+      fillColor = ~pal3(Type),
+      
+      popup = ~paste(
+        "Type:", Type,
+        "<br>Year:", Year,
+        "Row:", Row
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal3,
+      values = ~Type,
+      title = "Type"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+##### d2H v. d18O
 
 ```{r}
 #all samples
@@ -666,9 +976,18 @@ LakeRiverSpringd2Hvd18Oplt <- UtahLakeSamples %>%
   theme_minimal()
 
 LakeRiverSpringd2Hvd18Oplt
-```
 
-### Matos et al. Graphs
+#all samples
+Combinedd2Hvd18Oplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  ggplot()+
+  aes(x = d18O, y = d2H, size = Year, color = Site_Name, shape = Type)+
+  geom_point()+
+  theme_classic()
+
+ggplotly(Combinedd2Hvd18Oplt)
+Combinedd2Hvd18Oplt
+```
 
 ### Analysis
 
