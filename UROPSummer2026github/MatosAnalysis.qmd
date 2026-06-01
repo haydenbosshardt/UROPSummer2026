@@ -1,0 +1,289 @@
+---
+title: "MatosAnalysis"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(latex2exp)
+library(readxl)
+library(egg)
+library(plotly)
+library(readr)
+library(neonUtilities) #download and manage NEON data (in-house)
+library(neonOS) #NEON OS data
+library(terra) #general geological data
+library(ggplot2)
+library(colorspace)
+library(viridis)
+library(sf)
+library(tigris)
+library(leaflet)
+library(maps)
+library(crosstalk)
+library(lubridate)
+```
+
+## Loading New Data Products
+
+Need:
+
+-   atmos vapor concentration
+
+-   soil temperature
+
+-   daily air temp
+
+-   solar radiation
+
+Have:
+
+-   atmos isotope concentration
+
+-   precipitation amount
+
+-   precipitation isotope concentration
+
+-   relative humidity
+
+```{r}
+# soil radiation
+SoilRadiation <- loadByProduct(
+  dpID = "DP1.00014.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE)
+```
+
+```{r}
+#single aspirated air temp
+SingleAspiratedAirTemp <- loadByProduct(
+  dpID = "DP1.00002.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE)
+```
+
+```{r}
+#triple aspirated air temp
+TripleAspiratedAirTemp <- loadByProduct(
+  dpID = "DP1.00003.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE)
+```
+
+```{r}
+#soil temp
+SoilTemperature2022 <- loadByProduct(
+  dpID = "DP1.00041.001",
+  site = "ONAQ",
+  startdate = "2022-01",
+  enddate = "2022-12",
+  package = "basic",
+  check.size = FALSE
+)
+  
+```
+
+```{r}
+SoilTemperature2023 <- loadByProduct(
+  dpID = "DP1.00041.001",
+  site = "ONAQ",
+  startdate = "2023-01",
+  enddate = "2023-06",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+write_rds(SoilTemperature2022$ST_30_minute, "SoilTemperature2022.rds")
+write_rds(SoilTemperature2023$ST_30_minute, "SoilTemperature2023.rds")
+write_rds(SoilTemperature2024$ST_30_minute, "SoilTemperature2024.rds")
+```
+
+```{r}
+write_csv(SoilTemperature2022$ST_30_minute, "SoilTemperature2022.csv")
+write_csv(SoilTemperature2023$ST_30_minute, "SoilTemperature2023.csv")
+write_csv(SoilTemperature2024$ST_30_minute, "SoilTemperature2024.csv")
+```
+
+```{r}
+SoilTemperature2024 <- loadByProduct(
+  dpID = "DP1.00041.001",
+  site = "ONAQ",
+  startdate = "2024-01",
+  enddate = "2024-12",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+write_csv(SingleAspiratedAirTemp$SAAT_30min, "SingleAirTemp.csv")
+write_csv(TripleAspiratedAirTemp$TAAT_30min, "TripleAirTemp.csv")
+write_csv(SoilRadiation$SRDDP_30min, "SoilRadiation.csv")
+```
+
+```{r}
+SingleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SingleAirTemp.csv")
+TripleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/TripleAirTemp.csv")
+SoilRadiation <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilRadiation.csv")
+RelativeHumidity <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQRHumid.csv")
+AtmosphereIsotope <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmos.csv")
+SoilTemperature2022 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilTemperature2022.csv")
+SoilTemperature2023 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilTemperature2023.csv")
+SoilTemperature2024 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilTemperature2024.csv")
+```
+
+## Soil Radiation
+
+### Identifying Sunset v. Sunrise
+
+```{r}
+SoilRadiation <- SoilRadiation %>% 
+  mutate(
+    Daylight = difRadMean > 10
+  )
+
+Daylight <- SoilRadiation %>% 
+  select(Daylight, endDateTime)
+
+
+```
+
+```{r}
+#making date column
+SoilRadiation <- SoilRadiation %>%
+  mutate(
+    Date = as.Date(endDateTime)
+  )
+  
+#making date into time
+SoilRadiation <- SoilRadiation %>% 
+  mutate(
+    Time = format(endDateTime, "%H:%M:%S")
+  )
+```
+
+```{r}
+Sunrise_Sunset <- SoilRadiation %>%
+  mutate(
+    daylight = dirRadMean > 10
+  ) %>%
+  filter(daylight) %>%
+  group_by(Date) %>%
+  summarise(
+    Sunrise = first(Time),
+    Sunset = last(Time),
+    .groups = "drop"
+  )
+```
+
+## Soil Temperature
+
+### Incorporating daytime into soil temp measurements
+
+```{r}
+SoilTemp <- bind_rows(SoilTemperature2022, SoilTemperature2023, SoilTemperature2024)
+```
+
+```{r}
+SoilAvgTemp <- SoilTemp %>% 
+  group_by(endDateTime) %>%
+  summarise(
+    MeanSoilTemp = mean(soilTempMean, na.rm = TRUE),
+    NumSensors = sum(!is.na(soilTempMean)),
+    .groups = "drop"
+  )
+```
+
+```{r}
+SoilAvgTemp <- SoilAvgTemp %>% 
+  left_join(
+    Daylight %>% select(endDateTime, Daylight),
+    by = "endDateTime"
+  )
+
+```
+
+```{r}
+SoilDailyAvg <- SoilAvgTemp %>% 
+  filter(Daylight == TRUE) %>% 
+  group_by(endDateTime) %>% 
+  summarise(
+    MeanDailyTemp = mean(MeanSoilTemp, na.rm = TRUE)
+  )
+```
+
+```{r}
+SoilDailyAvg <- SoilAvgTemp %>% 
+  mutate(
+    YearMonth = format(endDateTime, "%Y-%m")
+  )
+```
+
+```{r}
+SoilTempMonthlyAvg <- SoilDailyAvg %>% 
+  group_by(YearMonth) %>% 
+  summarise(
+    SoilMeanMontlyTemp = mean(MeanSoilTemp, na.rm = TRUE)
+  )
+```
+
+## Atmosphere temperature
+
+### calculating averages
+
+```{r}
+SingleAvgAirTemp <- SingleAirTemp %>% 
+  group_by(endDateTime) %>%
+  summarise(
+    SingleMeanAirTemp = mean(tempSingleMean, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+CombinedAvgAirTemp <- SingleAvgAirTemp %>% 
+  left_join(
+    TripleAirTemp %>% select(endDateTime, tempTripleMean),
+    by = "endDateTime"
+  )
+```
+
+```{r}
+CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+  mutate(
+    AvgAirTemp = ((SingleMeanAirTemp + tempTripleMean)/2)
+  )
+```
+
+```{r}
+CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+  mutate(
+    YearMonth = format(endDateTime, "%Y-%m")
+  )
+```
+
+```{r}
+CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+  group_by(YearMonth) %>% 
+  summarise(
+    MeanAirTemp = mean(AvgAirTemp, na.rm = TRUE)
+  )
+```
+
+## Humidity
+
+```{r}
+
+```
