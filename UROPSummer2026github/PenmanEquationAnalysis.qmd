@@ -1,0 +1,11 @@
+---
+title: "PenmanEquationAnalysis"
+format: html
+editor: visual
+---
+
+## loading data products
+
+```{r}
+
+```

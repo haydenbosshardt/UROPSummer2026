@@ -351,7 +351,7 @@ ONAQHumid0 <- ONAQHumid %>%
 
 ### Utah Lake Isotopes
 
-#### From WaterIsotpes.org
+#### From WaterIsotopes.org
 
 ```{r}
 AllUtahCountyData <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
@@ -1135,10 +1135,6 @@ ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
 ```
 
 #### Fractionation Factor
-
-\$\$
-
-\$\$
 
 $$\alpha = \frac{R_l}{R_v}$$
 

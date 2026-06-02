@@ -133,6 +133,8 @@ write_csv(TripleAspiratedAirTemp$TAAT_30min, "TripleAirTemp.csv")
 write_csv(SoilRadiation$SRDDP_30min, "SoilRadiation.csv")
 ```
 
+## START
+
 ```{r}
 SingleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SingleAirTemp.csv")
 TripleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/TripleAirTemp.csv")
@@ -216,27 +218,59 @@ SoilAvgTemp <- SoilAvgTemp %>%
 ```
 
 ```{r}
-SoilDailyAvg <- SoilAvgTemp %>% 
-  filter(Daylight == TRUE) %>% 
-  group_by(endDateTime) %>% 
-  summarise(
-    MeanDailyTemp = mean(MeanSoilTemp, na.rm = TRUE)
-  )
-```
-
-```{r}
-SoilDailyAvg <- SoilAvgTemp %>% 
+SoilDaytimeAvg <- SoilAvgTemp %>% 
   mutate(
-    YearMonth = format(endDateTime, "%Y-%m")
-  )
+    DateTime = ymd_hms(endDateTime),
+    Date = as.Date(DateTime)) %>% 
+  filter(Daylight == TRUE)
 ```
 
 ```{r}
-SoilTempMonthlyAvg <- SoilDailyAvg %>% 
-  group_by(YearMonth) %>% 
-  summarise(
-    SoilMeanMontlyTemp = mean(MeanSoilTemp, na.rm = TRUE)
-  )
+create_period_summary <- function(data,
+                                  value_column,
+                                  period_days) {
+
+  start_date <- min(data$Date, na.rm = TRUE)
+
+  data %>%
+    mutate(
+      PeriodGroup =
+        floor(as.numeric(Date - start_date) / period_days)
+    ) %>%
+    group_by(PeriodGroup) %>%
+    summarize(
+      StartDate = min(Date),
+      EndDate = max(Date),
+
+      Mean = mean(.data[[value_column]], na.rm = TRUE),
+
+      SD = sd(.data[[value_column]], na.rm = TRUE),
+
+      N = sum(!is.na(.data[[value_column]])),
+
+      .groups = "drop"
+    )
+}
+```
+
+```{r}
+Ts_3day <- create_period_summary(
+  data = SoilDaytimeAvg,
+  value_column = "MeanSoilTemp",
+  period_days = 3
+)
+
+SoilTemp_7day <- create_period_summary(
+  SoilDaytimeAvg,
+  "MeanSoilTemp",
+  7
+)
+
+SoilTemp_14day <- create_period_summary(
+  SoilDaytimeAvg,
+  "MeanSoilTemp",
+  14
+)
 ```
 
 ## Atmosphere temperature
@@ -262,6 +296,14 @@ CombinedAvgAirTemp <- SingleAvgAirTemp %>%
 
 ```{r}
 CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+  left_join(
+    Daylight %>% select(endDateTime, Daylight),
+    by = "endDateTime"
+  )
+```
+
+```{r}
+CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
   mutate(
     AvgAirTemp = ((SingleMeanAirTemp + tempTripleMean)/2)
   )
@@ -270,20 +312,188 @@ CombinedAvgAirTemp <- CombinedAvgAirTemp %>%
 ```{r}
 CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
   mutate(
-    YearMonth = format(endDateTime, "%Y-%m")
-  )
+    DateTime = ymd_hms(endDateTime),
+    Date = as.Date(DateTime)) %>% 
+  filter(Daylight == TRUE)
 ```
 
 ```{r}
-CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
-  group_by(YearMonth) %>% 
-  summarise(
-    MeanAirTemp = mean(AvgAirTemp, na.rm = TRUE)
-  )
+Ta_3day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 3
+)
+
+Ta_7day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 7
+)
+
+Ta_14day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 14
+)
 ```
 
 ## Humidity
 
 ```{r}
+RelativeHumidity <- RelativeHumidity %>% 
+  group_by(endDateTime) %>%
+  summarise(
+    RHMean = mean(RHMean, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
 
+```{r}
+RelativeHumidity <- RelativeHumidity %>% 
+  left_join(
+    Daylight %>% select(endDateTime, Daylight),
+    by = "endDateTime"
+  )
+```
+
+```{r}
+RelativeHumidity <- RelativeHumidity %>% 
+  mutate(
+    DateTime = ymd_hms(endDateTime),
+    Date = as.Date(DateTime)) %>% 
+  filter(Daylight == TRUE)
+```
+
+```{r}
+RH_3day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 3
+)
+
+RH_7day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 7
+)
+
+RH_14day <- create_period_summary(
+  data = CombinedAvgAirTemp,
+  value_column = "AvgAirTemp",
+  period_days = 14
+)
+```
+
+## Atmospheric Isotopes
+
+### d18O
+
+```{r}
+AtmosphereIsotope <- AtmosphereIsotope %>% 
+  group_by(timeEnd) %>% 
+  summarise(
+    Meand18OAtmosIsotopes = mean(data.isoH2o.dlta18OH2o.mean, na.rm = TRUE)
+  )
+
+```
+
+```{r}
+Avgd18OAtmosIsotopes <- Avgd18OAtmosIsotopes %>% 
+  left_join(
+    Daylight %>% select(endDateTime, Daylight),
+    by = "timeEnd"
+  )
+```
+
+### d2H
+
+```{r}
+Avgd2HAtmosIsotopes <- AtmosphereIsotope %>% 
+  group_by(timeEnd) %>% 
+  summarise(
+    MeanAtmosIsotopes = mean(data.isoH2o.dlta2HH2o.mean, na.rm = TRUE)
+  )
+```
+
+```{r}
+Avgd2HAtmosIsotopes <- Avgd2HAtmosIsotopes %>% 
+  mutate(
+    YearMonth = format(timeEnd, "%Y-%m")
+  )
+```
+
+```{r}
+Avgd2HAtmosIsotopes <- Avgd2HAtmosIsotopes %>% 
+  left_join(
+    Daylight %>% select(endDateTime, Daylight),
+    by = "endDateTime"
+  )
+```
+
+### dS and dT
+
+```{r}
+ONAQdSdTPath <- "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ExampleCode/katarenamatos-NEONET/ONAQ_dS-and-dT.xlsx"
+
+sheets <- excel_sheets(ONAQdSdTPath)
+
+for(sheet in sheets) {
+  
+  ONAQdSdTSheet <- read_excel(ONAQdSdTPath, sheet = sheet)
+  csv_name <- paste0(sheet, ".csv")
+  write.csv(ONAQdSdTSheet, csv_name, row.names = FALSE)
+}
+```
+
+```{r}
+ONAQdSdT <- read_csv("ONAQ.csv")
+```
+
+```{r}
+ONAQdSdT <- ONAQdSdT %>% 
+  rename(
+    "d2HdS" = "dS2H Summary",
+    "d18OdS" = "dS18O Summary",
+    "d2HdT" = "dT2H Summary",
+    "d18OdT" = "dT18O Summary",
+    "SampleDate" = "Sample Date"
+  )
+```
+
+```{r}
+dS2Hplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d2HdS)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dS2Hplt
+
+dT2Hplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d2HdT)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dT2Hplt
+
+dSd18Oplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d18OdS)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dSd18Oplt
+
+dTd18Oplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d18OdT)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dTd18Oplt
 ```
