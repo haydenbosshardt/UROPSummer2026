@@ -23,6 +23,7 @@ library(leaflet)
 library(maps)
 library(crosstalk)
 library(lubridate)
+library(wsyn)
 ```
 
 ## Loading New Data Products
@@ -104,18 +105,6 @@ SoilTemperature2023 <- loadByProduct(
 ```
 
 ```{r}
-write_rds(SoilTemperature2022$ST_30_minute, "SoilTemperature2022.rds")
-write_rds(SoilTemperature2023$ST_30_minute, "SoilTemperature2023.rds")
-write_rds(SoilTemperature2024$ST_30_minute, "SoilTemperature2024.rds")
-```
-
-```{r}
-write_csv(SoilTemperature2022$ST_30_minute, "SoilTemperature2022*.csv")
-write_csv(SoilTemperature2023$ST_30_minute, "SoilTemperature2023*.csv")
-write_csv(SoilTemperature2024$ST_30_minute, "SoilTemperature2024*.csv")
-```
-
-```{r}
 SoilTemperature2024 <- loadByProduct(
   dpID = "DP1.00041.001",
   site = "ONAQ",
@@ -127,9 +116,18 @@ SoilTemperature2024 <- loadByProduct(
 ```
 
 ```{r}
+write_rds(SoilTemperature2022$ST_30_minute, "SoilTemperature2022.rds")
+write_rds(SoilTemperature2023$ST_30_minute, "SoilTemperature2023.rds")
+write_rds(SoilTemperature2024$ST_30_minute, "SoilTemperature2024.rds")
+```
+
+```{r}
 write_csv(SingleAspiratedAirTemp$SAAT_30min, "SingleAirTemp.csv")
 write_csv(TripleAspiratedAirTemp$TAAT_30min, "TripleAirTemp.csv")
 write_csv(SoilRadiation$SRDDP_30min, "SoilRadiation.csv")
+write_csv(SoilTemperature2022$ST_30_minute, "SoilTemperature2022*.csv")
+write_csv(SoilTemperature2023$ST_30_minute, "SoilTemperature2023*.csv")
+write_csv(SoilTemperature2024$ST_30_minute, "SoilTemperature2024*.csv")
 ```
 
 ## START
@@ -623,7 +621,7 @@ MC_RH <- vector(
   length = nrow(RH_3day)
 )
 for(i in 1:nrow(RH_3day)){
-  MC_SoilTemp[[i]] <- rnorm(
+  MC_RH[[i]] <- rnorm(
     n = 1000,
     mean = RH_3day$Mean[i],
     sd = RH_3day$SD[i]
@@ -710,9 +708,9 @@ for(j in 1:nrow(ONAQdT)){
 
 #### alpha star
 
-delta 18O
+##### delta 18O
 
-$$\alpha^{+}=exp[-\frac{7.685}{10^{3}}+\frac{6.7123}{(273.15+T)}-\frac{1666.4}{{(273.15+T)}^{2}}+\frac{350410}{{(273.15+T)}^{3}}]$$
+$$\alpha{^{+18O}}=\frac{1}{\exp\left(\frac{-7.685+ 6.7123\left(\frac{10^3}{T+273.15}\right)- 1.6664\left(\frac{10^6}{(T+273.15)^2}\right)+ 0.35041\left(\frac{10^9}{(T+273.15)^3}\right)}{10^3}\right)}$$
 
 ```{r}
 
@@ -723,20 +721,19 @@ MC_alphastar_d18O <- vector(
 
 for(i in 1:nrow(SoilTemp_3day)) {
 
- MC_alphastar_d18O[[i]] <- exp(
-  -(
+ MC_alphastar_d18O[[i]] <- 1/(exp(
+  (
     -7.685 +
-    6712.3/(MC_SoilTemp[[i]] + 273.15) -
-    1666400/(MC_SoilTemp[[i]] + 273.15)^2 +
-    350410000/(MC_SoilTemp[[i]] + 273.15)^3
-  ) / 1000
-)}
+    6.7123*(10^3/(MC_SoilTemp[[i]] + 273.15)) -
+    1.6664*(10^6/(MC_SoilTemp[[i]] + 273.15)^2) +
+    0.35041*(10^9/(MC_SoilTemp[[i]] + 273.15)^3)
+  ) / 10^3
+))}
 ```
 
-delta 2H
+##### delta 2H
 
-$$\alpha^{+} = exp[115.8(\frac{{(273.15+T)}^{3}}{{10}^{12}})-1620.1(\frac{{(273.15+T)}^{2}}{{10}^{9}})+794.84(\frac{(273.15+T
-)}{{10}^{6}})-\frac{161.04}{{10}^{3}}+\frac{2999200}{{(273.15+T)}^{3}}]$$
+$$\alpha{^{+2H}}=\frac{1}{\exp\left(\frac{1158.8\left(\frac{(T+273.15)^3}{10^9}\right)- 1620.1\left(\frac{(T+273.15)^2}{10^6}\right)+ 794.84\left(\frac{T+273.15}{10^3}\right)- 161.04+ 2.9992\left(\frac{10^9}{(T+273.15)^3}\right)}{10^3}\right)}$$
 
 ```{r}
 MC_alphastar_d2H <- vector(
@@ -746,11 +743,150 @@ MC_alphastar_d2H <- vector(
 
 for(i in 1:nrow(SoilTemp_3day)) {
 
- MC_alphastar_d2H[[i]] <- exp(
-   115.8 * (((273.15+MC_SoilTemp[[i]])^3)/10^12) -
-  1620.1 * (((273.15+MC_SoilTemp[[i]])^2)/10^9) +
-  794.84 * ((273.15+MC_SoilTemp[[i]])/10^6) - 
-  161.04/10^3 +
-  2999200/((273.15+MC_SoilTemp[[i]])^3)
+ MC_alphastar_d2H[[i]] <- 1/exp(
+  (
+    1158.8 * ((MC_SoilTemp[[i]] + 273.15)^3 / 10^9) -
+    1620.1 * ((MC_SoilTemp[[i]] + 273.15)^2 / 10^6) +
+    794.84 * ((MC_SoilTemp[[i]] + 273.15) / 10^3) -
+    161.04 +
+    2.9992 * (10^9 / (MC_SoilTemp[[i]] + 273.15)^3)
+  ) / 10^3
 )}
+```
+
+#### epsilon star - equilibrium isotopic separations
+
+##### d18O
+
+$$
+\varepsilon^{+18O} = (\alpha^{+18O}-1)*10^{3}‰
+$$
+
+```{r}
+MC_epsilonstar_d18O <- vector(
+  mode = "list",
+  length = nrow(MC_alphastar_d18O)
+)
+
+for(i in 1:nrows(MC_alphastar_d18O)) {
+  MC_epsilonstar_d18O[[i]] <- ((MC_alphastar_d18O - 1)*10^3)
+}
+```
+
+##### d2H
+
+$$
+\varepsilon^{+2H} = (\alpha^{+2H}-1)*10^{3}‰
+$$
+
+```{r}
+MC_epsilonstar_d2H <- vector(
+  mode = "list",
+  length = nrows(MC_alphastar_d2H)
+)
+
+for(i in 1:nrows(MC_alphastar_d2H)) {
+  MC_epsilonstar_d2H[[i]] <- ((MC_alphastar_d2H - 1)*10^3)
+}
+```
+
+#### humidity
+
+converts the measured humidity in the air to what it likely is at the soil surface based on the temperature of each and therefore how much water the system can hold
+
+- if the soil is hotter than the environment than it is less humid
+
+- for Utah lake, zanazzi uses atmospheric humidity and does not convert based on temperature at lake surface
+
+##### air vapor pressure
+
+$$e_{sat,air}= \frac{6.11*10^{\frac{7.5T_a}{237.3+T_a}}}{10}$$
+
+```{r}
+MC_airvappres <- vector(
+  mode = "list",
+  length = nrows(MC_RH)
+)
+for(i in nrows(MC_RH)) {
+  MC_airvappres[[i]] <- (6.11*10^((7.5*MC_AirTemp[[i]])/(237.3+MC_AirTemp[[i]])))/10 
+}
+```
+
+##### soil vapor pressure
+
+$$e_{sat,soil} = \frac{6.11*10^{\frac{7.5T_s}{237.3+T_s}}}{10} $$
+
+```{r}
+MC_soilvappres <- vector(
+  mode = "list",
+  length = nrows(MC_SoilTemp)
+)
+for(i in nrows(MC_SoilTemp)) {
+  MC_soilvappres[[i]] <- (6.11*10^((7.5*MC_SoilTemp[[i]])/(237.3+MC_SoilTemp[[i]])))/10 
+}
+```
+
+##### humidity fraction
+
+$$humidity = \frac{RH}{100}*\frac{e_{sat,air}}{e_{sat,soil}}$$
+
+```{r}
+MC_hA <- vector(
+  mode = "list",
+  length = nrows(MC_RH)
+)
+for(i in nrows(MC_RH)){
+  MC_hA[[i]] <- ((MC_RH[[i]])/100)*((MC_airvappres[[i]]/MC_soilvappres[[i]]))
+}
+```
+
+#### sigma k - kinetic isotopic fractionation factors 
+
+d18O
+
+$$\varepsilon_K^{18O} = \theta*C_K^{18O}*(1-h)‰$$
+
+##### 
+
+```{r}
+MC_epsilonK_18O <-  vector(
+  mode= "list",
+  length = nrows(MC_hA)
+)
+for (i in 1:nrows(MC_hA)) {
+  MC_epsilonK[[i]] <- 1*14.2*(1-MC_hA[[i]])
+  
+}
+```
+
+##### d2H
+
+$$\varepsilon_K^{18O} = \theta*C_K^{2H}*(1-h)‰$$
+
+```{r}
+MC_epsilonK_2H <-  vector(
+  mode= "list",
+  length = nrows(MC_hA)
+)
+for (i in 1:nrows(MC_hA)) {
+  MC_epsilonK[[i]] <- 1*12.5*(1-MC_hA[[i]])
+  
+}
+```
+
+#### Craig Gordon equation
+
+##### d18O
+
+$$\delta_E^{18O} = \frac{(\alpha_{18O}*\delta_S^{18O}-h_A\delta_A^{18O}) - \frac{\varepsilon_{+}^{18O} + \varepsilon_k^{18O}}{1000}}{(1-h_A)+\frac{\varepsilon_k^{18O}}{1000}}$$
+
+```{r}
+MC_CG <- vector(
+  mode = "list",
+  length = nrows(MC_dSd18O)
+)
+
+for(i in nrows(MC_dSd18O)){
+  MC_CG[[i]] <- ((MC_alphastar_d18O*MC_dSd18O-MC_hA*MC_dAd18O)-((MC_epsi))
+}
 ```
