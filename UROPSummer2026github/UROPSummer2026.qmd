@@ -4,9 +4,8 @@ format: html
 editor: visual
 ---
 
-## 
-
 ```{r}
+#did this so it would use files from UROP Summer 2026 but doesn't work and files to still automatically go to the git hub file, therefore need to specify when calling the file in individual code lines
 setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026")
 ```
 
@@ -21,18 +20,19 @@ library(neonUtilities) #download and manage NEON data (in-house)
 library(neonOS) #NEON OS data
 library(terra) #general geological data
 library(ggplot2)
-library(colorspace)
-library(viridis)
-library(sf)
-library(tigris)
-library(leaflet)
-library(maps)
+library(colorspace)#got for using more colors, don't really use
+library(viridis)#virids color palette
+library(sf)#need for interactive map
+library(tigris)#interactive map
+library(leaflet)#need for satellite image of interactive map
+library(maps)#interactive map
 library(crosstalk)
 ```
 
 ## Test Run - April 2024 Only
 
 ```{r}
+#april 2024 atmosphere data, test run so could deal with smaller data set. this generates the #h5 files on the computer but need to be picked apart manually on the computer manually
 zipsByProduct(
   dpID = "DP4.00200.001",
   site = "ONAQ",
@@ -50,6 +50,7 @@ getwd()
 ```
 
 ```{r}
+#stacks the files to be a df in R from the manually unstacked h5 files. file path leads to the h5 files that i manually placed into this folder
 AprilEddy <- stackEddy(
   filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/filesToStack00200/AprilSampleh5",
   level = "dp01",
@@ -60,11 +61,13 @@ AprilEddy <- stackEddy(
 ```
 
 ```{r}
+#creates april 2024 only atmosphere isotopes csv file
 write.csv(Eddy$ONAQ, file = "ONAQAprilAtm.csv")
 
 ```
 
 ```{r}
+#reads april 2024 only atmosphere isotopes csv file
 ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAprilAtm.csv")
 ```
 
@@ -73,6 +76,7 @@ ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONA
 ### Atm and Air Temp
 
 ```{r}
+#same as april 2024 above. pulls out zip file of all eddy covalence data. need to go in #manually and spereate out everything into its own file with all the h5 files.
 zipsByProduct(
   dpID = "DP4.00200.001",
   site = "ONAQ",
@@ -84,6 +88,7 @@ zipsByProduct(
 ```
 
 ```{r}
+#pulls out atmosphere isotopes from eddy covalence data and puts it into its own df inside R
 AtmosEddy <- stackEddy(
   filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmosH5",
   level = "dp01",
@@ -91,6 +96,7 @@ AtmosEddy <- stackEddy(
   avg = 30
 )
 
+#does the same thing as the atmosphere, pulls out air temp from eddy covalence data and then organizes into its own df
 AirTempEddy <- stackEddy(
   filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmosH5",
   level = "dp01",
@@ -100,6 +106,7 @@ AirTempEddy <- stackEddy(
 ```
 
 ```{r}
+#writes the csv file for both atmosphere isotopes data and air temp data from eddy covalence from the df made above from the stack eddy func. these now exsit on the computer
 write_csv(AtmosEddy$ONAQ, file = "ONAQAtmos.csv")
 write_csv(AirTempEddy$ONAQ, file = "ONAQAirTemp.csv")
 ```
@@ -107,6 +114,7 @@ write_csv(AirTempEddy$ONAQ, file = "ONAQAirTemp.csv")
 ### Soil Water Iso
 
 ```{r}
+#pulls data from the soil data from NEON. did the same thing where it stacked together all of the zip files and had to back and manually pull them out. but this isn't the eddy covalence, its for the soil data on neon
 zipsByProduct(
   dpID = "DP1.10086.001",
   site = "ONAQ",
@@ -118,6 +126,7 @@ zipsByProduct(
 ```
 
 ```{r}
+#pulls soil isotope data from the h5 files and creates new df
 SoilIsoEddy <- stackEddy(
   filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/filesToStack10086",
   level = "dp01",
@@ -128,9 +137,12 @@ SoilIsoEddy <- stackEddy(
 
 Need to add in csv file for this \*maybe
 
+couldn't find the actual soil isotope data for this. probably don't need for utah lake calculations. might need for matos but they use their own df which is found in their example code file
+
 ### Humidity
 
 ```{r}
+#load humidity df
 ONAQhumidity <- loadByProduct(
   dpID = "DP1.00098.001",
   site = "ONAQ",
@@ -141,6 +153,7 @@ ONAQhumidity <- loadByProduct(
   
 )
 
+#as tibble function creates own df with the 30 min measurments then the write csv creates the specific csv file in urop sum 2026 file
 ONAQHumid <- as_tibble(ONAQhumidity$RH_30min)
 write_csv(ONAQHumid, "ONAQRHumid.csv")
 ```
@@ -148,17 +161,15 @@ write_csv(ONAQHumid, "ONAQRHumid.csv")
 ### Precipitation
 
 ```{r}
+#same as humidity above, loads data from cloud/website into the r environment
 ONAQprecipitation <- loadByProduct(dpID = "DP1.00038.001", 
                                    site = "ONAQ",
                                    startdate = "2022-01",
                                    enddate = "2024-12",
                                    check.size = FALSE)
 
+#now creates df with just the precipitation isotope measurements, and then turns this into a csv file that will now exist on the computer
 ONAQPrecip <- as_tibble(ONAQprecipitation$wdi_isoPerSample)
-
-```
-
-```{r}
 write_csv(ONAQPrecip, "ONAQPrecip.csv")
 ```
 
@@ -167,10 +178,12 @@ write_csv(ONAQPrecip, "ONAQPrecip.csv")
 ### Atmosphere
 
 ```{r}
+#loads in csv file for onaq atmospheric isotopes (again have to include the whole string because of weird file path stuff), TRUE label is not edited at all and is straight original version
 ONAQTRUEAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmos.csv")
 ```
 
 ```{r}
+#modifies names of columns for easier work later and ease of understanding the data
 ONAQAtmos <- ONAQTRUEAtmos %>% 
   rename(
     "d18Omean" = "data.isoH2o.dlta18OH2o.mean",
@@ -201,7 +214,7 @@ ONAQAtmos <- ONAQTRUEAtmos %>%
 ```
 
 ```{r}
-#getting rid of unnecssary columns
+#getting rid of unnecssary columns, specifically issue logs or repeats of data columns that came in a different format
 ONAQAtmos <- ONAQAtmos %>% 
   select(horizontalPosition, verticalPosition, StartTime, EndTime, d18Omean, d18Omin, d18Omax, d18OSampleNumber, d2Hmean, d2Hmin, d2Hmax, d2HSampleNumber, PressureMean, PressureMin, PressureMax, PressureSampleNum, TempMean, TempMax, TempMin, DryMoleRatioMean, DryMoleRatioMin, DryMoleRatioMax, WetMoleRatioMean, WetMoleRatioMin, WetMoleRatioMax)
 
@@ -218,16 +231,19 @@ ONAQAtmos <- ONAQAtmos %>%
   )
 
 #getting rid of NA values
+#getting rid of anything NA for d18O sample number because this what i first found to be inconsistent
 ONAQAtmos <- ONAQAtmos %>% 
   filter(d18OSampleNumber != 0)
-
+#gets rid of any NA with d18O isotope measurments as extra precaution
 ONAQAtmos <- ONAQAtmos %>% 
   filter(!is.na(d18Omean))
+#gets rid of any NA with d2H isotope measurments as extra precaution
 ONAQAtmos <- ONAQAtmos %>% 
   filter(!is.na(d2Hmean))
 ```
 
 ```{r}
+#originally intended to calculate humidity here but instead chose to use the actual data set from NEON tracking humidity so decided to not use this caluclation and voided it from the code
 #ONAQAtmos <- ONAQAtmos %>% 
   #mutate(
     #humidityratio = ((WetMoleRatioMean / DryMoleRatioMean) * 0.677)
@@ -237,6 +253,7 @@ ONAQAtmos <- ONAQAtmos %>%
 ### Checks
 
 ```{r}
+#created a data frame checking the vertical position variable in the atmosphere df and what the different positions were and their effect on if the data was NA or not
 #vertcheck <- ONAQAtmos %>% 
   #filter(verticalPosition == "h2oMed")
 
@@ -248,11 +265,13 @@ ONAQAtmos <- ONAQAtmos %>%
 ### Precipitation
 
 ```{r}
+#load in precipation csv, same as atmosphere where have to have long file name string, also same as above where true is unchanged and original file 
 ONAQTRUEPrecip <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecip.csv")
 
 ```
 
 ```{r}
+#renamed columns to be easier to use and understand
 ONAQPrecip <- ONAQTRUEPrecip %>% 
   rename(
     "d18O" = "d18OWater",
@@ -277,7 +296,7 @@ ONAQPrecip <- ONAQPrecip %>%
 ```
 
 ```{r}
-
+#getting rid of unwanted columns (stuff to do with issue log or other variables not needed)
 ONAQPrecip <-  ONAQPrecip %>% 
   select(collectDate, d18O, d2H, d18Osd, d2Hsd, d18Ouncert, d2Huncert, Row, Date)
 ```
@@ -285,10 +304,12 @@ ONAQPrecip <-  ONAQPrecip %>%
 ### Humidity
 
 ```{r}
+#load in humidity, same as above need file string to find on computer and true is unedited version
 ONAQTRUEHumid <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQRHumid.csv")
 ```
 
 ```{r}
+#rename column names for easier use and understanding
 ONAQHumid <- ONAQTRUEHumid %>% 
   rename(
     "StartTime" = "startDateTime",
@@ -316,10 +337,8 @@ ONAQHumid <- ONAQHumid %>%
 ONAQHumid <- ONAQHumid %>% 
   mutate(
     Temp_Kelvin = MeanTempC + 273.15)
+#kelvin is used later for other calculations, and added fahrenheit to better understand the data
 
-```
-
-```{r}
 #adding row numbers
 ONAQHumid <- ONAQHumid %>% 
   mutate(
@@ -331,7 +350,7 @@ ONAQHumid <- ONAQHumid %>%
   mutate(
     Date = format(StartTime, "%Y-%m"))
 
-#choosing wanted columns to keep in df
+#choosing wanted columns to keep in df, gettind rid of issue log or random data collected that isn't needed
 ONAQHumid <- ONAQHumid %>% 
   select(
     StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, MeanTempC, MinTempC, MaxTempC, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Date, Temp_F, Temp_Kelvin
@@ -354,11 +373,13 @@ ONAQHumid0 <- ONAQHumid %>%
 #### From WaterIsotopes.org
 
 ```{r}
+#data from water isotopes.org, no date restrictions, no type restrictions, restricted by lat and long to only get utah county data - date range is 1990 - 2024
+#wanted this data to get a picture of all data collected and then sample from this later for monte carlo
 AllUtahCountyData <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
 ```
 
 ```{r}
-#renaming some columns
+#renaming some columns for ease and understanding
 AllUtahCountyData <- AllUtahCountyData %>%
   rename(
   "Elevation" = "Elevation_mabsl",
@@ -368,12 +389,13 @@ AllUtahCountyData <- AllUtahCountyData %>%
 ```
 
 ```{r}
+#getting rid of unnecessary columns that are unneccessary
 AllUtahCountyData <- AllUtahCountyData %>% 
   select(-Start_Date, -Start_Time_Zone, -Collection_Time_Zone, -Phase, -Depth_meters, -Sample_Comments, -D17O, -D17O_Analytical_SD, -WI_Analysis_Source, -Site_Comments,  )
 ```
 
 ```{r}
-#creating main df
+#creating main df, getting rid of sample types named below only leaving lake, river, and spring samples
 UtahLakeSamples <- AllUtahCountyData %>% 
   filter(!Type %in% c("Tap", "Milk", "Sprinkler", "Ground"))
 
@@ -402,10 +424,14 @@ UtahLakeSamples <- UtahLakeSamples %>%
 #### From Zanazzi
 
 ```{r}
+#loading in the data from zanazzi et al. 2020 
 UtahLakeZanazziPath <- "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/UtahLake2014-2016Zanazzi.xlsx"
 
+#this df was weird and had lots of sheets inside the actaul file, so had to seperate out all the sheets inorder to use the one i wanted
+#names object sheet that lists all of the sheets in the file
 sheets <- excel_sheets(UtahLakeZanazziPath)
 
+#creates individual files for each sheet in the file
 for(sheet in sheets) {
   
   UtahLakeZanazziSheet <- read_excel(UtahLakeZanazziPath, sheet = sheet)
@@ -413,6 +439,11 @@ for(sheet in sheets) {
   write.csv(UtahLakeZanazziSheet, csv_name, row.names = FALSE)
 }
 
+
+```
+
+```{r}
+#reads each of these files of individual sheets, but only need sheet 1 because these are all repeats individual collections
 UtahLakeZanazziS2 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S2.csv")
 
 UtahLakeZanazziS3 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S3.csv")
@@ -423,12 +454,13 @@ UtahLakeZanazziS5 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S5
 ```
 
 ```{r}
+#Zanazzi et al 2020 data, combination of all collected data so only read this csv file
 UtahLakeZanazziS1 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S1.csv")
 ```
 
 ```{r}
 
-
+#rename func to make easier and consistent columns
 UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
   rename(
     "Site_Name" = "...2",
@@ -441,19 +473,21 @@ UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
     "SD18O" = "...9"
   )
 
-
+#if d2h is NA, don't include
 UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
   filter(!is.na(d2H)) 
-
+#gets rid of first row because it was either blank or had column labels
 UtahLakeZanazziS1 <- UtahLakeZanazziS1[-c(1), ]
 
+#got rid of these columns because they were werid format issues
 UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% select(-`Table S1. Biweekly Samples`)
 ```
 
 ```{r}
-
+#turns collection data into a numeric value becasue originally was character 
 UtahLakeZanazziS1$Collection_Date <- as.numeric(UtahLakeZanazziS1$Collection_Date)
 
+#then turns collection data into data format, excel file did something weird where it was a weird number that represented number of days since dec. 30th 1899 so switched over to actual data format
 UtahLakeZanazziS1$Collection_Date <- as.Date(UtahLakeZanazziS1$Collection_Date, origin = "1899-12-30")
 
 ```
@@ -473,7 +507,7 @@ UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
 #making year not a continuous value
 UtahLakeZanazziS1$Year <- as.factor(UtahLakeZanazziS1$Year)
 
-#making everything numeric
+#making everything numeric, because everything started as a character value
 UtahLakeZanazziS1$d18O <- as.numeric(UtahLakeZanazziS1$d18O)
 
 UtahLakeZanazziS1$d2H <- as.numeric(UtahLakeZanazziS1$d2H)
@@ -487,7 +521,7 @@ UtahLakeZanazziS1$SD2H <- as.numeric(UtahLakeZanazziS1$SD2H)
 UtahLakeZanazziS1$SD18O <- as.numeric(UtahLakeZanazziS1$SD18O)
 
 
-#creating type row
+#creating type row, this made it easier to readd to the utah county data
 UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
   mutate(Type = "Zanazzi")
 
@@ -502,7 +536,7 @@ UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
 #### Combining Zanazzi with water isotope
 
 ```{r}
-#creating combined df
+#creating combined df, also added on row with row number so could get rid of unwanted values through donotuse and organization purposes
 CombinedDF <- bind_rows(UtahLakeSamples, UtahLakeZanazziS1) %>% 
   mutate(
     Row = row_number()
@@ -510,7 +544,7 @@ CombinedDF <- bind_rows(UtahLakeSamples, UtahLakeZanazziS1) %>%
 ```
 
 ```{r}
-#getting rid of far away sites or other weird #s
+#getting rid of far away sites or other weird #s, from map below 
 CombinedDF <- CombinedDF %>% 
       mutate(DONOTUSE = Row %in% c(9, 19, 7, 18, 8, 17, 21 
           , TRUE, DONOTUSE))
@@ -519,7 +553,10 @@ CombinedDF <- CombinedDF %>%
 ##### Boxplots
 
 ```{r}
-#Water Isotopes.org
+
+#Water Isotopes.org and zanazzi box plots to visualize the data in order to make decisions about analysis later
+#d18O measurements 
+
 #all data (includes ground water)
 UtahLaked18Oplt <- UtahLakeSamples %>% 
   filter(DONOTUSE == FALSE) %>% 
@@ -588,6 +625,7 @@ LakeRiverSpringd18Oplt <- UtahLakeSamples %>%
 
 LakeRiverSpringd18Oplt
 
+#lake and spring only, pretty sure spring samples were just older lake samples
 LakeSpringd18Oplt <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) %>% 
   filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
@@ -619,6 +657,7 @@ ZanazziSamplesd18Oplt <- UtahLakeZanazziS1 %>%
 
 ZanazziSamplesd18Oplt
 
+#all samples from zanazzi and water isotopes.org
 CombinedSamplesd18Oplt <- CombinedDF %>% 
   filter(DONOTUSE == FALSE) %>% 
   ggplot()+
@@ -635,6 +674,7 @@ CombinedSamplesd18Oplt
 ```
 
 ```{r}
+#saved last plot with all data including zanazzi for rachel's presentation
 ggsave(
   "CombinedSamplesPlot3.pdf",
   plot = CombinedSamplesd18Oplt,
@@ -644,6 +684,9 @@ ggsave(
 ```
 
 ```{r}
+#Water Isotopes.org and zanazzi box plots to visualize the data in order to make decisions about analysis later
+#d2H measurements
+
 #lake only samples
 LakeOnlyd2Hplt <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) %>% 
@@ -732,6 +775,9 @@ CombinedSamplesd2Hplt
 ##### Map Plot
 
 ```{r}
+#used lat and long measurments to place them on a map and get rid of any samples that were not actually from utah lake, did this because originally all data from water isotopes.org was filtered from lat and long but therefore wasn't sure how close to utah lake the values actually were, this allowed me to see what was actually happening with values
+
+#created dfs that were specific df and then converted them so they could be used on a map
 #WI.org only
 UtahLakeSamples_Filtered <- UtahLakeSamples %>%
   filter(DONOTUSE == FALSE) 
@@ -763,19 +809,23 @@ UtahLakeCombined_sf <- st_as_sf(
 ```
 
 ```{r}
+#had to create color pallettes for how i wanted to visualize the points placed on the map
 #WI.org
+#palette was based on year
 pal1 <- colorFactor(
   palette = "Set2",
   domain = UtahLakeSamples_sf$Year
 )
 
 #zanazzi
+#palette was based on which site it was
 pal2 <- colorFactor(
   palette = "Set2",
   domain = UtahLakeZanazzi_sf$Site_Name
 )
 
-
+#combined
+#palette was based on type of sample (either zanazzi, lake, river, or spring)
 pal3 <- colorFactor(
   palette = "Set2",
   domain = UtahLakeCombined_sf$Type
@@ -783,6 +833,7 @@ pal3 <- colorFactor(
 ```
 
 ```{r}
+#actually creates the map
 #WI.org
 # Create shared data object
 UtahLakeSharedSamples <- SharedData$new(UtahLakeSamples_sf)
@@ -936,6 +987,7 @@ bscols(
 ##### d2H v. d18O
 
 ```{r}
+#added d2H v. d18O plot to add to data comparison (didn't use in analysis decision as much)
 #all samples
 Alld2Hvd18Oplt <- UtahLakeSamples %>% 
   ggplot()+
@@ -1000,6 +1052,7 @@ $$\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}$$
 ##### SKIPPPPP
 
 ```{r}
+#loads in amount of fallen precipitation in order to compare to precip isotopes and compute weighted amount
 ONAQprecipitationamount <- loadByProduct(
   dpID = "DP1.00044.001",
   site = "ONAQ",
@@ -1011,12 +1064,14 @@ ONAQprecipitationamount <- loadByProduct(
 ```
 
 ```{r}
+#creates df from precip amount for when measurments were taken, eithere every hour or once a day
 ONAQPrecipAmountDaily <- as_tibble(ONAQprecipitationamount$WEIPRE_daily)
 
 ONAQPrecipAmount60 <- as_tibble(ONAQprecipitationamount$WEIPRE_60min)
 ```
 
 ```{r}
+#created csv from the two dfs above 
 write_csv(ONAQPrecipAmount60, "ONAQPrecipAmount60.csv")
 
 write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
@@ -1027,18 +1082,21 @@ write_csv(ONAQPrecipAmountDaily, "ONAQPrecipAmountDaily.csv")
 ##### START!
 
 ```{r}
+#read the two csvs
 ONAQPrecipAmount60 <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmount60.csv")
 
 ONAQPrecipAmountDaily <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmountDaily.csv")
 ```
 
 ```{r}
+#chose to mostly use daily measurments to deal with less data and it was more consistent with other data frames and other data averaging periods
 #in daily precip measurments df - get rid of any days that have 0 precipitation
 ONAQPrecipAmountCompare <- ONAQPrecipAmountDaily %>% 
   filter(precipBulk != 0)
 ```
 
 ```{r}
+#renamed to be consistent
 ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
   rename(
     "CollectionDate" = "date"
@@ -1062,6 +1120,7 @@ ONAQPrecipAmountCompareAvg <- ONAQPrecipAmountCompare %>%
   summarise(PrecipAmountAvg = mean(precipBulk, na.rm = TRUE))
 
 #adding back in 2024-06
+#originally did not exist so added as a 0 value
 ONAQPrecipAmountCompareAvg %>%  add_row(Date = "2024-06", PrecipAmountAvg = 0)
 
 ```
@@ -1069,6 +1128,7 @@ ONAQPrecipAmountCompareAvg %>%  add_row(Date = "2024-06", PrecipAmountAvg = 0)
 ##### Sample Plot:
 
 ```{r}
+#wanted to visualize the precip amount over the time
 ViewPrecipAmountplt <- ONAQPrecipAmountCompareAvg %>% 
   ggplot()+
   aes(x = Date, y = PrecipAmountAvg)+
@@ -1092,6 +1152,7 @@ ViewPrecipAmount2022plt
 
 ```{r}
 #average each month of precipitation isotopes for d18O and d2H
+#need to change to fit monte carlo analysis
 ONAQPrecipMonthAvg <- ONAQPrecip %>%
   group_by(Date) %>% 
   summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
@@ -1099,22 +1160,23 @@ ONAQPrecipMonthAvg <- ONAQPrecip %>%
 ```
 
 ```{r}
-#adding in missing months to precip isotope values
+#adding in missing months to precip isotope values, same as above where the value was either zero or didn't exist so replaced with zero to keep meausrments consistent
 ONAQPrecipMonthAvg %>% add_row(Date = "2022-02", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
 ONAQPrecipMonthAvg %>% add_row(Date = "2024-06", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
 
-#combining precip amounts and precip isotopes into the same df (d18O)
+#combining monthly averages of precip amounts and precip isotopes into the same df (d18O)
 ONAQPrecipAmountd18OCombinedMonthAvg <-
   bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd18Omean)
   )
 
-#combining precip amounts and precip isotopes into the same df (d2H)
+#combining monthly averages of precip amounts and precip isotopes into the same df (d2H)
 ONAQPrecipAmountd2HCombinedMonthAvg <-
   bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd2Hmean)
   )
 ```
 
 ```{r}
+#AGAIN CHANGE TO FIT MONTE CARLO
 #calculating amount weighted isotopes for d18O
 ONAQPrecipWeightedd18O <- ONAQPrecipAmountCombinedMonthAvg %>%
   group_by(Date) %>%
@@ -1139,13 +1201,14 @@ ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
 $$\alpha = \frac{R_l}{R_v}$$
 
 ```{r}
-#Monthly averages
+#need to change so that it fits monte carlo analysis
+#calculating and creating a new df for the monthly averages of atmosphere values for Rv value of fractionation factor equation 
 ONAQAtmosMonthAvg <- ONAQAtmos %>%
   group_by(Month) %>%  
   summarise(AtmosAvgd18Omean = mean(d18Omean, na.rm = TRUE),
             AtmosAvgd2Hmean = mean(d2Hmean, na.rm = TRUE))
 
-
+#same as previous chunk but creating montly averages for precipitation values, this would be Rl value of fraction factor equation
 ONAQPrecipMonthAvg <- ONAQPrecip %>%
   group_by(Month) %>% 
   summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
@@ -1154,16 +1217,19 @@ ONAQPrecipMonthAvg <- ONAQPrecip %>%
 ```
 
 ```{r}
+#creating new df from precip montly average and atmosphere average with month and the averaged d18O value
 ONAQd18OCombinedMonthAvg <- 
   bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd18Omean), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
   )
 
+#creating new df from precip montly average and atmosphere average with month and the averaged d2H value
 ONAQd2HCombinedMonthAvg <- 
   bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd2Hmean), ONAQAtmosMonthAvg %>% select(AtmosAvgd2Hmean)
   )
 ```
 
 ```{r}
+#above was incorrect because it didn't include the precip weighted values, created new df with the weighted values and the atmosphere values, only for d18O
 ONAQd18OCombinedMonthAvg <- 
   bind_cols(Weightedd18O %>% select(Month, Weightedd18O), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
   )
@@ -1171,6 +1237,8 @@ ONAQd18OCombinedMonthAvg <-
 ```
 
 ```{r}
+#This is wrong!
+#calcualted fractionation factor from precip and atmosphere, calcualted wrong fractionation factor
 ONAQd18OCombinedMonthAvg <- ONAQd18OCombinedMonthAvg %>% 
   mutate(
     FractionationFactor = (Weightedd18O/AtmosAvgd18Omean))
@@ -1182,6 +1250,8 @@ ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>%
 ```
 
 ### Plots
+
+a few random plots that were created at the very beginning to visualize data and see what i was working with and what was happening in the data
 
 ```{r}
 ONAQAtmplt1 <- ONAQAtmos %>% 

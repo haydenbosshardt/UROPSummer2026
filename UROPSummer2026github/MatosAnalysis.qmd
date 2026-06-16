@@ -30,23 +30,23 @@ library(wsyn)
 
 Need:
 
-- atmos vapor concentration
+-   atmos vapor concentration
 
-- soil temperature
+-   soil temperature
 
-- daily air temp
+-   daily air temp
 
-- solar radiation
+-   solar radiation
 
 Have:
 
-- atmos isotope concentration
+-   atmos isotope concentration
 
-- precipitation amount
+-   precipitation amount
 
-- precipitation isotope concentration
+-   precipitation isotope concentration
 
-- relative humidity
+-   relative humidity
 
 ```{r}
 # soil radiation
@@ -794,9 +794,9 @@ for(i in 1:nrows(MC_alphastar_d2H)) {
 
 converts the measured humidity in the air to what it likely is at the soil surface based on the temperature of each and therefore how much water the system can hold
 
-- if the soil is hotter than the environment than it is less humid
+-   if the soil is hotter than the environment than it is less humid
 
-- for Utah lake, zanazzi uses atmospheric humidity and does not convert based on temperature at lake surface
+-   for Utah lake, zanazzi uses atmospheric humidity and does not convert based on temperature at lake surface
 
 ##### air vapor pressure
 
@@ -840,7 +840,7 @@ for(i in nrows(MC_RH)){
 }
 ```
 
-#### sigma k - kinetic isotopic fractionation factors 
+#### sigma k - kinetic isotopic fractionation factors
 
 d18O
 
