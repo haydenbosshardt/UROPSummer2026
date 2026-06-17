@@ -1,0 +1,817 @@
+---
+title: "UROPSum_UnneededCode"
+format: html
+editor: visual
+---
+
+###April 2024 Test Run
+```{r}
+#april 2024 atmosphere data, test run so could deal with smaller data set. this generates the #h5 files on the computer but need to be picked apart manually on the computer manually
+zipsByProduct(
+  dpID = "DP4.00200.001",
+  site = "ONAQ",
+  startdate = "2024-04",
+  enddate = "2024-04",
+  package = "basic",
+  check.size = FALSE
+)
+```
+
+```{r}
+#stacks the files to be a df in R from the manually unstacked h5 files. file path leads to the h5 files that i manually placed into this folder
+AprilEddy <- stackEddy(
+  filepath = "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/filesToStack00200/AprilSampleh5",
+  level = "dp01",
+  var = "tempAirTop",
+  avg = 30
+)
+
+```
+
+```{r}
+#creates april 2024 only atmosphere isotopes csv file
+write.csv(Eddy$ONAQ, file = "ONAQAprilAtm.csv")
+
+```
+
+```{r}
+#reads april 2024 only atmosphere isotopes csv file
+ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAprilAtm.csv")
+```
+
+
+#Humidity Mole Ratio 
+
+```{r}
+#originally intended to calculate humidity here but instead chose to use the actual data set from NEON tracking humidity so decided to not use this caluclation and voided it from the code
+#ONAQAtmos <- ONAQAtmos %>% 
+  #mutate(
+    #humidityratio = ((WetMoleRatioMean / DryMoleRatioMean) * 0.677)
+  #)
+```
+
+#Humidity checks
+originally sperated by different towers, but changed to averaging all sensors
+```{r}
+#data frame for 40 ft tower measurment of humidity
+ONAQHumid40 <- ONAQHumid %>% 
+  filter(verticalPosition == "040")
+
+#data frame for 0ft tower measurment of humidity
+ONAQHumid0 <- ONAQHumid %>% 
+  filter(verticalPosition == "000")
+```
+
+
+# Checks
+
+```{r}
+#created a data frame checking the vertical position variable in the atmosphere df and what the different positions were and their effect on if the data was NA or not
+#vertcheck <- ONAQAtmos %>% 
+  #filter(verticalPosition == "h2oMed")
+
+#vertcheck <- vertcheck %>% 
+  #filter(!is.na(d18Omean))
+
+```
+
+##weird zanazzi files
+
+```{r}
+#reads each of these files of individual sheets, but only need sheet 1 because these are all repeats individual collections
+UtahLakeZanazziS2 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S2.csv")
+
+UtahLakeZanazziS3 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S3.csv")
+
+UtahLakeZanazziS4 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S4.csv")
+
+UtahLakeZanazziS5 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S5.csv")
+```
+
+#Utah Lake Isotope Data Plots
+##### Boxplots
+
+```{r}
+
+#Water Isotopes.org and zanazzi box plots to visualize the data in order to make decisions about analysis later
+#d18O measurements 
+
+#all data (includes ground water)
+UtahLaked18Oplt <- UtahLakeSamples %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "All WI.org Samples"
+  )+
+  theme_classic()
+
+UtahLaked18Oplt
+
+#lake only samples
+LakeOnlyd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "WI.org Lake Only Samples"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeOnlyd18Oplt
+
+
+#Lake and river only
+LakeandRiverd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "WI.org Lake and River Samples"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeandRiverd18Oplt
+
+
+#Lake, River, Spring
+LakeRiverSpringd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "WI.org Lake, River, and Spring Samples"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeRiverSpringd18Oplt
+
+#lake and spring only, pretty sure spring samples were just older lake samples
+LakeSpringd18Oplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "WI.org Lake and Spring Samples"
+  )+
+  #scale_y_continuous(limits = c(-17, -2))+
+  theme_classic()
+
+LakeSpringd18Oplt
+
+#Zanazzi
+#All samples
+ZanazziSamplesd18Oplt <- UtahLakeZanazziS1 %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "All Zanazzi Samples"
+  )+
+  theme_minimal()
+
+ZanazziSamplesd18Oplt
+
+#all samples from zanazzi and water isotopes.org
+CombinedSamplesd18Oplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  ggplot()+
+  aes(x = Year, y = d18O)+
+  geom_boxplot(
+    fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "Collected Utah Lake Samples 1991 - 2024"
+  )+
+  theme_classic()
+
+CombinedSamplesd18Oplt
+```
+
+```{r}
+#saved last plot with all data including zanazzi for rachel's presentation
+ggsave(
+  "CombinedSamplesPlot3.pdf",
+  plot = CombinedSamplesd18Oplt,
+  width = 8,
+  height = 6
+)
+```
+
+```{r}
+#Water Isotopes.org and zanazzi box plots to visualize the data in order to make decisions about analysis later
+#d2H measurements
+
+#lake only samples
+LakeOnlyd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeOnlyd2Hplt
+
+
+#Lake and river only
+LakeandRiverd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeandRiverd2Hplt
+
+
+#Lake, River, Spring
+LakeRiverSpringd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeRiverSpringd2Hplt
+
+#lake and spring samples only
+LakeSpringd2Hplt <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+LakeSpringd2Hplt
+
+#all zanazzi samples
+ZanazziSamplesd2Hplt <- UtahLakeZanazziS1 %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "All Zanazzi Samples"
+  )+
+  theme_minimal()
+
+ZanazziSamplesd2Hplt
+
+#combined samples
+CombinedSamplesd2Hplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x = Year, y = d2H)+
+  geom_boxplot(
+    fill = "indianred", median.linewidth = 1.0, median.color = "indianred4", box.color = "black", whisker.color = "black"
+  )+
+  labs(
+    title = "Collected Utah Lake Samples 1991 - 2024"
+  )+
+  theme_classic()
+
+CombinedSamplesd2Hplt
+```
+
+##### Map Plot
+
+```{r}
+#used lat and long measurments to place them on a map and get rid of any samples that were not actually from utah lake, did this because originally all data from water isotopes.org was filtered from lat and long but therefore wasn't sure how close to utah lake the values actually were, this allowed me to see what was actually happening with values
+
+#created dfs that were specific df and then converted them so they could be used on a map
+#WI.org only
+UtahLakeSamples_Filtered <- UtahLakeSamples %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeSamples_sf <- st_as_sf(
+  UtahLakeSamples_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
+#zanazzi only
+UtahLakeZanazzi_Filtered <- UtahLakeZanazziS1 %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeZanazzi_sf <- st_as_sf(
+  UtahLakeZanazzi_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
+
+#combined
+UtahLakeCombined_Filtered <- CombinedDF %>%
+  filter(DONOTUSE == FALSE) 
+
+
+UtahLakeCombined_sf <- st_as_sf(
+  UtahLakeCombined_Filtered,
+  coords = c("Longitude", "Latitude"),
+             crs = 4326)
+```
+
+```{r}
+#had to create color pallettes for how i wanted to visualize the points placed on the map
+#WI.org
+#palette was based on year
+pal1 <- colorFactor(
+  palette = "Set2",
+  domain = UtahLakeSamples_sf$Year
+)
+
+#zanazzi
+#palette was based on which site it was
+pal2 <- colorFactor(
+  palette = "Set2",
+  domain = UtahLakeZanazzi_sf$Site_Name
+)
+
+#combined
+#palette was based on type of sample (either zanazzi, lake, river, or spring)
+pal3 <- colorFactor(
+  palette = "Set2",
+  domain = UtahLakeCombined_sf$Type
+)
+```
+
+```{r}
+#actually creates the map
+#WI.org
+# Create shared data object
+UtahLakeSharedSamples <- SharedData$new(UtahLakeSamples_sf)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Type",
+    label = "Sample Type",
+    sharedData = UtahLakeSharedSamples,
+    group = ~Type
+  ),
+  
+  leaflet(UtahLakeSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal1(Year),
+      fillColor = ~pal1(Year),
+      
+      popup = ~paste(
+        "Type:", Type,
+        "<br>Year:", Year
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal1,
+      values = ~Year,
+      title = "Year"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+```{r}
+#Zanazzi
+# Create shared data object
+UtahLakeZanazziSharedSamples <- SharedData$new(UtahLakeZanazzi_sf)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Year",
+    label = "Year",
+    sharedData = UtahLakeZanazziSharedSamples,
+    group = ~Year
+  ),
+  
+  leaflet(UtahLakeZanazziSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal2(Site_Name),
+      fillColor = ~pal2(Site_Name),
+      
+      popup = ~paste(
+        "Site_Name:", Site_Name,
+        "<br>Year:", Year
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal2,
+      values = ~Site_Name,
+      title = "Site_Name"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+```{r}
+#Combined
+# Create shared data object
+UtahLakeCombinedSharedSamples <- SharedData$new(UtahLakeCombined_sf)
+
+# Interactive filtered map
+bscols(
+  widths = c(3, 9),
+  
+  filter_select(
+    id = "Type",
+    label = "Sample Type",
+    sharedData = UtahLakeCombinedSharedSamples,
+    group = ~Type
+  ),
+  
+  leaflet(UtahLakeCombinedSharedSamples) %>%
+    
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    
+    addCircleMarkers(
+      radius = 5,
+      stroke = TRUE,
+      weight = 1,
+      fillOpacity = 0.8,
+      
+      color = ~pal3(Type),
+      fillColor = ~pal3(Type),
+      
+      popup = ~paste(
+        "Type:", Type,
+        "<br>Year:", Year,
+        "Row:", Row
+      )
+    ) %>%
+    
+    addLegend(
+      position = "bottomright",
+      pal = pal3,
+      values = ~Type,
+      title = "Type"
+    ) %>%
+    
+    setView(
+      lng = -111.85,
+      lat = 40.25,
+      zoom = 10
+    )
+)
+```
+
+##### d2H v. d18O
+
+```{r}
+#added d2H v. d18O plot to add to data comparison (didn't use in analysis decision as much)
+#all samples
+Alld2Hvd18Oplt <- UtahLakeSamples %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+Alld2Hvd18Oplt
+
+#lake samples only
+Laked2Hvd18Oplt <- UtahLakeSamples %>% 
+  filter(Type == "Lake_or_pond") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+Laked2Hvd18Oplt
+
+#lake and river samples
+
+LakeandRiverd2Hvd18Oplt <- UtahLakeSamples %>% 
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+LakeandRiverd2Hvd18Oplt
+
+#Lake, River, and Spring
+
+LakeRiverSpringd2Hvd18Oplt <- UtahLakeSamples %>%
+  filter(Type == "Lake_or_pond" | Type == "River_or_stream" | Type == "Spring") %>% 
+  ggplot()+
+  aes(x= d18O, y = d2H, shape = Type, color = Year)+
+  geom_point()+
+  theme_minimal()
+
+LakeRiverSpringd2Hvd18Oplt
+
+#all samples
+Combinedd2Hvd18Oplt <- CombinedDF %>% 
+  filter(DONOTUSE == FALSE) %>% 
+  ggplot()+
+  aes(x = d18O, y = d2H, size = Year, color = Site_Name, shape = Type)+
+  geom_point()+
+  theme_classic()
+
+ggplotly(Combinedd2Hvd18Oplt)
+Combinedd2Hvd18Oplt
+```
+
+
+#Visualizing precip amounts
+
+```{r}
+#wanted to visualize the precip amount over the time
+ViewPrecipAmountplt <- ONAQPrecipAmountCompareAvg %>% 
+  ggplot()+
+  aes(x = Date, y = PrecipAmountAvg)+
+  geom_point()+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45))
+
+ViewPrecipAmountplt
+
+ViewPrecipAmount2022plt <- ONAQPrecipAmountCompareAvg %>%
+  filter(substr(Date, 1, 4) == "2022") %>% 
+  ggplot()+
+  aes(x = Date, y = PrecipAmountAvg)+
+  geom_point()+
+  theme_minimal()
+  
+ViewPrecipAmount2022plt
+
+
+```
+
+
+#Daytime v. Nighttime Code
+
+```{r}
+SoilAvgTemp <- SoilAvgTemp %>% 
+  left_join(
+    Daylight %>% select(startDateTime, Daylight),
+    by = "startDateTime"
+  )
+
+```
+
+#Analysis that isn't monte carlo
+
+```{r}
+#average each month of precipitation isotopes for d18O and d2H
+#need to change to fit monte carlo analysis
+ONAQPrecipMonthAvg <- ONAQPrecip %>%
+  group_by(Date) %>% 
+  summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
+            PrecipAvgd2Hmean = mean(d2H, na.rm = TRUE))
+```
+
+```{r}
+#adding in missing months to precip isotope values, same as above where the value was either zero or didn't exist so replaced with zero to keep meausrments consistent
+ONAQPrecipMonthAvg %>% add_row(Date = "2022-02", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
+ONAQPrecipMonthAvg %>% add_row(Date = "2024-06", PrecipAvgd18Omean = 0, PrecipAvgd2Hmean = 0)
+
+#combining monthly averages of precip amounts and precip isotopes into the same df (d18O)
+ONAQPrecipAmountd18OCombinedMonthAvg <-
+  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd18Omean)
+  )
+
+#combining monthly averages of precip amounts and precip isotopes into the same df (d2H)
+ONAQPrecipAmountd2HCombinedMonthAvg <-
+  bind_cols(ONAQPrecipAmountCompareAvg %>% select(Date, PrecipAmountAvg), ONAQPrecipMonthAvg %>% select(PrecipAvgd2Hmean)
+  )
+```
+
+```{r}
+#AGAIN CHANGE TO FIT MONTE CARLO
+#calculating amount weighted isotopes for d18O
+ONAQPrecipWeightedd18O <- ONAQPrecipAmountCombinedMonthAvg %>%
+  group_by(Date) %>%
+  summarise(
+    d18OWeighted =
+      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
+      sum(PrecipAmountAvg, na.rm = TRUE)
+  )
+
+#calculating amount weighted isotopes for d2H
+ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
+  group_by(Date) %>%
+  summarise(
+    d2HWeighted =
+      sum(PrecipAmountAvg * PrecipAvgd18Omean, na.rm = TRUE) /
+      sum(PrecipAmountAvg, na.rm = TRUE)
+  )
+```
+
+
+
+#### Fractionation Factor
+
+$$\alpha = \frac{R_l}{R_v}$$
+
+```{r}
+#need to change so that it fits monte carlo analysis
+#calculating and creating a new df for the monthly averages of atmosphere values for Rv value of fractionation factor equation 
+ONAQAtmosMonthAvg <- ONAQAtmos %>%
+  group_by(Month) %>%  
+  summarise(AtmosAvgd18Omean = mean(d18Omean, na.rm = TRUE),
+            AtmosAvgd2Hmean = mean(d2Hmean, na.rm = TRUE))
+
+#same as previous chunk but creating montly averages for precipitation values, this would be Rl value of fraction factor equation
+ONAQPrecipMonthAvg <- ONAQPrecip %>%
+  group_by(Month) %>% 
+  summarise(PrecipAvgd18Omean = mean(d18O, na.rm = TRUE),
+            PrecipAvgd2Hmean = mean(d2H, na.rm = TRUE))
+
+```
+
+```{r}
+#creating new df from precip montly average and atmosphere average with month and the averaged d18O value
+ONAQd18OCombinedMonthAvg <- 
+  bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd18Omean), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
+  )
+
+#creating new df from precip montly average and atmosphere average with month and the averaged d2H value
+ONAQd2HCombinedMonthAvg <- 
+  bind_cols(ONAQPrecipMonthAvg %>% select(Month, PrecipAvgd2Hmean), ONAQAtmosMonthAvg %>% select(AtmosAvgd2Hmean)
+  )
+```
+
+```{r}
+#above was incorrect because it didn't include the precip weighted values, created new df with the weighted values and the atmosphere values, only for d18O
+ONAQd18OCombinedMonthAvg <- 
+  bind_cols(Weightedd18O %>% select(Month, Weightedd18O), ONAQAtmosMonthAvg %>% select(AtmosAvgd18Omean)
+  )
+
+```
+
+```{r}
+#This is wrong!
+#calcualted fractionation factor from precip and atmosphere, calcualted wrong fractionation factor
+ONAQd18OCombinedMonthAvg <- ONAQd18OCombinedMonthAvg %>% 
+  mutate(
+    FractionationFactor = (Weightedd18O/AtmosAvgd18Omean))
+
+ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>% 
+  mutate(
+    FractionationFactor = (PrecipAvgd2Hmean/AtmosAvgd2Hmean))
+  
+```
+
+
+#visualization plots
+
+### Plots
+
+a few random plots that were created at the very beginning to visualize data and see what i was working with and what was happening in the data
+
+```{r}
+ONAQAtmplt1 <- ONAQAtmos %>% 
+  ggplot()+
+  aes(x = Year, y = d18Omean)+
+  geom_boxplot(fill = "lightblue", median.linewidth = 1.0, median.color = "lightblue4", box.color = "black", whisker.color = "black"
+  )+
+  theme_classic()
+
+ONAQAtmplt1
+```
+
+```{r}
+ONAQAtmplt2 <- ONAQAtmos %>% 
+  ggplot()+
+  aes(x = d18Omean, y = d2Hmean)+
+  geom_point()+
+  geom_abline(slope = 7, intercept = 0, color = "#6FA458", linewidth = 1) +
+  geom_abline(slope = 7.45, intercept = -1.65, color = "#5B2C4D", linetype = 3, size = 2)+
+  theme_classic()
+
+ONAQAtmplt2
+```
+
+```{r}
+ONAQAtm2022 <- ONAQAtmos %>% 
+  filter(Year == 2022)  
+
+
+ONAQAtmHumidity2022 <- ONAQAtm2022 %>% 
+  ggplot()+
+  aes(x = StartTime,  y = humidityratio)+
+  geom_point()+
+  theme_classic()
+
+ONAQAtmHumidity2022
+```
+
+```{r}
+ONAQd18OCombinedMonthAvgPlt <- ONAQd18OCombinedMonthAvg %>% 
+  ggplot()+
+  geom_point(aes(x = Month, y = AtmosAvgd18Omean))+
+  geom_point(aes(x = Month, y = PrecipAvgd18Omean))+
+  theme_classic()
+
+ONAQd18OCombinedMonthAvgPlt
+```
+
+
+#dS and dT visualization plots
+
+```{r}
+dS2Hplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d2HdS)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dS2Hplt
+
+dT2Hplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d2HdT)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dT2Hplt
+
+dSd18Oplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d18OdS)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dSd18Oplt
+
+dTd18Oplt <- ONAQdSdT %>% 
+  ggplot()+
+  aes(x = SampleDate, y = d18OdT)+
+  geom_point()+
+  geom_smooth()+
+  theme_minimal()
+
+dTd18Oplt
+```

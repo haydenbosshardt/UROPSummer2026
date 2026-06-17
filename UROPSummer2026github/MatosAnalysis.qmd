@@ -48,6 +48,8 @@ Have:
 
 -   relative humidity
 
+Loading all variables that do not already have csv files created for them from the original UROP summer file
+
 ```{r}
 # soil radiation
 SoilRadiation <- loadByProduct(
@@ -82,6 +84,7 @@ TripleAspiratedAirTemp <- loadByProduct(
 ```
 
 ```{r}
+#soil temperature from just 2022; file was so large that was impossible to download all files at once and they had to be split into 2022, 2023, and 2024
 SoilTemperature2022 <- loadByProduct(
   dpID = "DP1.00041.001",
   site = "ONAQ",
@@ -94,6 +97,7 @@ SoilTemperature2022 <- loadByProduct(
 ```
 
 ```{r}
+#2023 soil temp
 SoilTemperature2023 <- loadByProduct(
   dpID = "DP1.00041.001",
   site = "ONAQ",
@@ -105,6 +109,7 @@ SoilTemperature2023 <- loadByProduct(
 ```
 
 ```{r}
+#2024 soil temp
 SoilTemperature2024 <- loadByProduct(
   dpID = "DP1.00041.001",
   site = "ONAQ",
@@ -116,12 +121,14 @@ SoilTemperature2024 <- loadByProduct(
 ```
 
 ```{r}
+#testing out writing rds files but doesn't change too much so decided to keep consistent and work with only csv files
 write_rds(SoilTemperature2022$ST_30_minute, "SoilTemperature2022.rds")
 write_rds(SoilTemperature2023$ST_30_minute, "SoilTemperature2023.rds")
 write_rds(SoilTemperature2024$ST_30_minute, "SoilTemperature2024.rds")
 ```
 
 ```{r}
+#created csv files from above data samples, created individual csv files for all years of soil temp
 write_csv(SingleAspiratedAirTemp$SAAT_30min, "SingleAirTemp.csv")
 write_csv(TripleAspiratedAirTemp$TAAT_30min, "TripleAirTemp.csv")
 write_csv(SoilRadiation$SRDDP_30min, "SoilRadiation.csv")
@@ -133,6 +140,7 @@ write_csv(SoilTemperature2024$ST_30_minute, "SoilTemperature2024*.csv")
 ## START
 
 ```{r}
+#reading csv files of what was mentioned above and others that were already created from UROP Summer quarto doc
 SingleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SingleAirTemp.csv")
 TripleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/TripleAirTemp.csv")
 SoilRadiation <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilRadiation.csv")
@@ -144,6 +152,10 @@ SoilTemperature2024 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilTe
 ```
 
 ```{r}
+#creating function for averaging periods based on how many days you want to average from, need to put in which data frame to chose from, which value you are averaging, and the number of days in the averaging period
+#this is what matos et al. decided to do, however, not sure if want this for the Utah lake data, because they were dealing with a lot more data than this project and it might create a more accurate representation to average for either one day or not at all
+
+#calculates the mean, standard deviation, how many rows it averaged and start and end date
 create_period_summary <- function(data,
                                   value_column,
                                   period_days) {
@@ -170,6 +182,7 @@ create_period_summary <- function(data,
 ### Identifying Sunset v. Sunrise
 
 ```{r}
+#from matos et al. they averaged data from the daytime to take into consideration eddy fluxes, therefore took any soil radiation that measured over 10 and created a true or false argument that could later be added onto any df to determine when it was daytime v. nighttime and whether or not to use the data based on that.
 SoilRadiation <- SoilRadiation %>% 
   mutate(
     Daylight = difRadMean > 10
@@ -182,6 +195,9 @@ Daylight <- SoilRadiation %>%
 ```
 
 ```{r}
+#originally was going to make soil radiation the same as all other data product dfs but because matos only uses it for day v. night didn't need to modify the table past the previous code chunk. this might need to change based on penman equation and what is done in zanazzi
+
+
 # #making date column
 # SoilRadiation <- SoilRadiation %>%
 #   mutate(
@@ -214,10 +230,12 @@ Daylight <- SoilRadiation %>%
 ### Incorporating daytime into soil temp measurements
 
 ```{r}
+#creates one large soil temp data frame including all years. didn't do this before because it was too much data to download in one loadByProduct function
 SoilTemp <- bind_rows(SoilTemperature2022, SoilTemperature2023, SoilTemperature2024)
 ```
 
 ```{r}
+#there were multiple different sampling locations and depths so averaged them all based on the 30 minute sampling period and then including a new column of how many sensors it averaged from
 SoilAvgTemp <- SoilTemp %>% 
   group_by(startDateTime) %>%
   summarise(
@@ -228,6 +246,7 @@ SoilAvgTemp <- SoilTemp %>%
 ```
 
 ```{r}
+#added in the daylight table to use the true or false func. to decide what to use in the project
 SoilAvgTemp <- SoilAvgTemp %>% 
   left_join(
     Daylight %>% select(startDateTime, Daylight),
@@ -237,6 +256,7 @@ SoilAvgTemp <- SoilAvgTemp %>%
 ```
 
 ```{r}
+#filtered by daylight and created new date columns that worked better
 SoilDaytimeAvg <- SoilAvgTemp %>% 
   mutate(
     DateTime = ymd_hms(startDateTime),
@@ -245,6 +265,7 @@ SoilDaytimeAvg <- SoilAvgTemp %>%
 ```
 
 ```{r}
+#applied matos averaging method with 3, 7 and 14 day samples 
 SoilTemp_3day <- create_period_summary(
   data = SoilDaytimeAvg,
   value_column = "MeanSoilTemp",
@@ -269,6 +290,8 @@ SoilTemp_14day <- create_period_summary(
 ### calculating averages
 
 ```{r}
+#same as soil temp where there were multiple sensors, so averaged by every 30 minute period and got rid of any NA values, did this for both the single and triple air temp
+
 SingleAvgAirTemp <- SingleAirTemp %>% 
   group_by(startDateTime) %>%
   summarise(
@@ -285,6 +308,7 @@ TripleAvgAirTemp <- TripleAirTemp %>%
 ```
 
 ```{r}
+#combined the single and triple aspirated air temps into one df 
 CombinedAvgAirTemp <- SingleAvgAirTemp %>% 
   left_join(
     TripleAvgAirTemp %>% select(startDateTime, TripleMeanAirTemp),
@@ -293,6 +317,7 @@ CombinedAvgAirTemp <- SingleAvgAirTemp %>%
 ```
 
 ```{r}
+#added in the daylight df, again to use later for only using daytime values in calculations
 CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
   left_join(
     Daylight %>% select(startDateTime, Daylight),
@@ -301,6 +326,7 @@ CombinedAvgAirTemp <- CombinedAvgAirTemp %>%
 ```
 
 ```{r}
+#created new column in this df that was the average of the single and triple aspirated air temps
 CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
   mutate(
     AvgAirTemp = ((SingleMeanAirTemp + TripleMeanAirTemp)/2)
@@ -308,6 +334,7 @@ CombinedAvgAirTemp <- CombinedAvgAirTemp %>%
 ```
 
 ```{r}
+#added in more accurate date and time column
 CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
   mutate(
     DateTime = ymd_hms(startDateTime),
@@ -316,6 +343,7 @@ CombinedAvgAirTemp <- CombinedAvgAirTemp %>%
 ```
 
 ```{r}
+#averaged based on the wanted period, again used in matos but probably won't use for utah lake
 AirTemp_3day <- create_period_summary(
   data = CombinedAvgAirTemp,
   value_column = "AvgAirTemp",
@@ -338,6 +366,7 @@ AirTemp_14day <- create_period_summary(
 ## Humidity
 
 ```{r}
+#average humidity by 30 minute period, don't think there were multiple sensors but did this to keep things consistent
 RelativeHumidity <- RelativeHumidity %>% 
   group_by(startDateTime) %>%
   summarise(
@@ -347,6 +376,7 @@ RelativeHumidity <- RelativeHumidity %>%
 ```
 
 ```{r}
+#added in the daylight column for future use
 RelativeHumidity <- RelativeHumidity %>% 
   left_join(
     Daylight %>% select(startDateTime, Daylight),
@@ -355,6 +385,7 @@ RelativeHumidity <- RelativeHumidity %>%
 ```
 
 ```{r}
+#added in more accurate date time column
 RelativeHumidity <- RelativeHumidity %>% 
   mutate(
     DateTime = ymd_hms(startDateTime),
@@ -363,6 +394,7 @@ RelativeHumidity <- RelativeHumidity %>%
 ```
 
 ```{r}
+#averaged based on 3, 7 and 14 day periods based on matos et al. 
 RH_3day <- create_period_summary(
   data = RelativeHumidity,
   value_column = "RHMean",
@@ -387,6 +419,7 @@ RH_14day <- create_period_summary(
 ### d18O
 
 ```{r}
+#the start and end time columns were named something different than all other data products so renamed so it was consistent and could use the create_period_summary function
 AtmosphereIsotope <- AtmosphereIsotope %>%
   rename(
     "startDateTime" = "timeBgn",
@@ -395,6 +428,7 @@ AtmosphereIsotope <- AtmosphereIsotope %>%
 ```
 
 ```{r}
+#started to need to seperate out by either d18O or d2H so created new df that averaged d18O by the 30 minuted period
 d18OAtmosIsotopes <- AtmosphereIsotope %>% 
   group_by(startDateTime) %>% 
   summarise(
@@ -403,6 +437,7 @@ d18OAtmosIsotopes <- AtmosphereIsotope %>%
 ```
 
 ```{r}
+#added on daylight df for future analysis
 d18OAtmosIsotopes <- d18OAtmosIsotopes %>% 
   left_join(
     Daylight %>% select(startDateTime, Daylight),
@@ -411,6 +446,7 @@ d18OAtmosIsotopes <- d18OAtmosIsotopes %>%
 ```
 
 ```{r}
+#added on better date time columns
 d18OAtmosIsotopes <- d18OAtmosIsotopes %>% 
   mutate(
     DateTime = ymd_hms(startDateTime),
@@ -419,6 +455,7 @@ d18OAtmosIsotopes <- d18OAtmosIsotopes %>%
 ```
 
 ```{r}
+#averaged for 3, 7 and 14 day periods and just for d18O in atmosphere samples
 dAd18O_3day <- create_period_summary(
   data = d18OAtmosIsotopes,
   value_column = "Meand18OAtmosIsotopes",
@@ -441,6 +478,7 @@ dAd18O_14day <- create_period_summary(
 ### d2H
 
 ```{r}
+#repeated the process for d2H, so seperated out atmosphere df by d2H and averaged for every 30 minute period; originally because of multiple sensors but this and d18O i think only had one sensor this just kept things consistent and seperated out d2H from d18O
 d2HAtmosIsotopes <- AtmosphereIsotope %>% 
   group_by(startDateTime) %>% 
   summarise(
@@ -449,6 +487,7 @@ d2HAtmosIsotopes <- AtmosphereIsotope %>%
 ```
 
 ```{r}
+#added in daylight column
 d2HAtmosIsotopes <- d2HAtmosIsotopes %>% 
   left_join(
     Daylight %>% select(startDateTime, Daylight),
@@ -457,6 +496,7 @@ d2HAtmosIsotopes <- d2HAtmosIsotopes %>%
 ```
 
 ```{r}
+#added in better date time column
 d2HAtmosIsotopes <- d2HAtmosIsotopes %>% 
   mutate(
     DateTime = ymd_hms(startDateTime),
@@ -465,6 +505,7 @@ d2HAtmosIsotopes <- d2HAtmosIsotopes %>%
 ```
 
 ```{r}
+#averaged for 3, 7 and 14 day periods, and again just for d2H in the atm samples
 dAd2H_3day <- create_period_summary(
   data = d2HAtmosIsotopes,
   value_column = "Meand2HAtmosIsotopes",
@@ -485,6 +526,12 @@ dAd2H_14day <- create_period_summary(
 ```
 
 ### dS and dT
+in matos et al. they use their own measurments for these values which are found in their zonodo, so had to load these in 
+similar to the zanazzi data, it came originally in lots or sheets that needed to seperate so the first code chunk below does that, however only needed the first sheet so went in maunally and named this what I wanted to call it and then just called that in here 
+
+dS = isotope composition of soil water
+
+dT = isotope composition of plant water
 
 ```{r}
 ONAQdSdTPath <- "/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ExampleCode/katarenamatos-NEONET/ONAQ_dS-and-dT.xlsx"
@@ -499,11 +546,13 @@ for(sheet in sheets) {
 }
 ```
 
+wanted file that manually sepearated out on my computer
 ```{r}
 ONAQdSdT <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQ.csv")
 ```
 
 ```{r}
+#rename everything to get rid of spaces, and make easier to use
 ONAQdSdT <- ONAQdSdT %>% 
   rename(
     "Sample_ID" = "Sample ID", 
@@ -525,6 +574,7 @@ ONAQdSdT <- ONAQdSdT %>%
 ```
 
 ```{r}
+#creating individual data frames for delta T (isotope composition of plants) and delta S (isotope composition of soil) 
 ONAQdS <- ONAQdSdT %>% 
   select(Sample_ID, Site_ID, SampleDate, d18OdS, dS18O_SE, dS18O_Num, d2HdS, dS2H_SE, dS2H_Num)
 
@@ -532,47 +582,13 @@ ONAQdT <- ONAQdSdT %>%
   select(Sample_ID, Site_ID, SampleDate, d18OdT, dT18O_SE, dT18O_Num, d2HdT, dT2H_SE, dT2H_Num)
 ```
 
-```{r}
-dS2Hplt <- ONAQdSdT %>% 
-  ggplot()+
-  aes(x = SampleDate, y = d2HdS)+
-  geom_point()+
-  geom_smooth()+
-  theme_minimal()
 
-dS2Hplt
-
-dT2Hplt <- ONAQdSdT %>% 
-  ggplot()+
-  aes(x = SampleDate, y = d2HdT)+
-  geom_point()+
-  geom_smooth()+
-  theme_minimal()
-
-dT2Hplt
-
-dSd18Oplt <- ONAQdSdT %>% 
-  ggplot()+
-  aes(x = SampleDate, y = d18OdS)+
-  geom_point()+
-  geom_smooth()+
-  theme_minimal()
-
-dSd18Oplt
-
-dTd18Oplt <- ONAQdSdT %>% 
-  ggplot()+
-  aes(x = SampleDate, y = d18OdT)+
-  geom_point()+
-  geom_smooth()+
-  theme_minimal()
-
-dTd18Oplt
-```
 
 ## Monte Carlo Analysis
 
 ```{r}
+#originally this changed the varaible goiing through the monte carlo to be easier but it's just an unnecessary step that don't actually need
+
 # mean_SoilTemp <- SoilTemp_3day$Mean [i]
 # sd_SoilTemp <- SoilTemp_3day$SD [i]
 # 
@@ -590,6 +606,8 @@ dTd18Oplt
 ```
 
 ```{r}
+#each section below takes the 3 day average df made above, states that for every row to pick a random value within the standard deviation and do that 1000 times
+
 #soil temp monte carlo simulation
 MC_SoilTemp <- vector(
   mode = "list",
@@ -706,6 +724,8 @@ for(j in 1:nrow(ONAQdT)){
 
 ### Craig Gordon
 
+now start to calculate all the variables needed in the CG model
+
 #### alpha star
 
 ##### delta 18O
@@ -713,7 +733,7 @@ for(j in 1:nrow(ONAQdT)){
 $$\alpha{^{+18O}}=\frac{1}{\exp\left(\frac{-7.685+ 6.7123\left(\frac{10^3}{T+273.15}\right)- 1.6664\left(\frac{10^6}{(T+273.15)^2}\right)+ 0.35041\left(\frac{10^9}{(T+273.15)^3}\right)}{10^3}\right)}$$
 
 ```{r}
-
+#applies a similar method as above where it calculates a lot of values based on the monte carlo values "proposed above", does this alpha star which has the equation above and is from zanazzi
 MC_alphastar_d18O <- vector(
   mode = "list",
   length = nrow(SoilTemp_3day)
@@ -736,6 +756,7 @@ for(i in 1:nrow(SoilTemp_3day)) {
 $$\alpha{^{+2H}}=\frac{1}{\exp\left(\frac{1158.8\left(\frac{(T+273.15)^3}{10^9}\right)- 1620.1\left(\frac{(T+273.15)^2}{10^6}\right)+ 794.84\left(\frac{T+273.15}{10^3}\right)- 161.04+ 2.9992\left(\frac{10^9}{(T+273.15)^3}\right)}{10^3}\right)}$$
 
 ```{r}
+#same as above but calculates alpha star for d2H which has a different equation for calculating 
 MC_alphastar_d2H <- vector(
   mode = "list",
   length = nrow(SoilTemp_3day)
@@ -763,6 +784,7 @@ $$
 $$
 
 ```{r}
+#calculates MC for epsilon star for d18O from alpha star above
 MC_epsilonstar_d18O <- vector(
   mode = "list",
   length = nrow(MC_alphastar_d18O)
@@ -780,6 +802,7 @@ $$
 $$
 
 ```{r}
+#same but calculates d2H epsilon star from d2H alpha star
 MC_epsilonstar_d2H <- vector(
   mode = "list",
   length = nrows(MC_alphastar_d2H)
@@ -803,6 +826,7 @@ converts the measured humidity in the air to what it likely is at the soil surfa
 $$e_{sat,air}= \frac{6.11*10^{\frac{7.5T_a}{237.3+T_a}}}{10}$$
 
 ```{r}
+#equation for calculating air vapor pressure based on air temp, creates monte carlo variable for air vap pressure
 MC_airvappres <- vector(
   mode = "list",
   length = nrows(MC_RH)
@@ -817,6 +841,7 @@ for(i in nrows(MC_RH)) {
 $$e_{sat,soil} = \frac{6.11*10^{\frac{7.5T_s}{237.3+T_s}}}{10} $$
 
 ```{r}
+#does similar to air vap pressure, calculates soil vapor pressure from soil temp and creates monte carlo variable for it
 MC_soilvappres <- vector(
   mode = "list",
   length = nrows(MC_SoilTemp)
@@ -831,6 +856,7 @@ for(i in nrows(MC_SoilTemp)) {
 $$humidity = \frac{RH}{100}*\frac{e_{sat,air}}{e_{sat,soil}}$$
 
 ```{r}
+#calculates humidity ratio from relative humidity and creates monte carlo variable
 MC_hA <- vector(
   mode = "list",
   length = nrows(MC_RH)
@@ -849,6 +875,7 @@ $$\varepsilon_K^{18O} = \theta*C_K^{18O}*(1-h)‰$$
 ##### 
 
 ```{r}
+#calculates epsilon kinetic from humidity ratio for d18O
 MC_epsilonK_18O <-  vector(
   mode= "list",
   length = nrows(MC_hA)
@@ -864,6 +891,7 @@ for (i in 1:nrows(MC_hA)) {
 $$\varepsilon_K^{18O} = \theta*C_K^{2H}*(1-h)‰$$
 
 ```{r}
+#calculates epsilon kinetic from humidity ratio for d2H valuable
 MC_epsilonK_2H <-  vector(
   mode= "list",
   length = nrows(MC_hA)
@@ -881,6 +909,7 @@ for (i in 1:nrows(MC_hA)) {
 $$\delta_E^{18O} = \frac{(\alpha_{18O}*\delta_S^{18O}-h_A\delta_A^{18O}) - \frac{\varepsilon_{+}^{18O} + \varepsilon_k^{18O}}{1000}}{(1-h_A)+\frac{\varepsilon_k^{18O}}{1000}}$$
 
 ```{r}
+#started to put all of the variable above into the craig gordon equation to calculate evaporation - couldn't figure out how the MC values were going to come out of this for each 3 day averaging period
 MC_CG <- vector(
   mode = "list",
   length = nrows(MC_dSd18O)
