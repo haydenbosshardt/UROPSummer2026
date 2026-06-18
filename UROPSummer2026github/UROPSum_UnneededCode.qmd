@@ -4,7 +4,8 @@ format: html
 editor: visual
 ---
 
-###April 2024 Test Run
+## April 2024 Test Run
+
 ```{r}
 #april 2024 atmosphere data, test run so could deal with smaller data set. this generates the #h5 files on the computer but need to be picked apart manually on the computer manually
 zipsByProduct(
@@ -39,8 +40,7 @@ write.csv(Eddy$ONAQ, file = "ONAQAprilAtm.csv")
 ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONAQAprilAtm.csv")
 ```
 
-
-#Humidity Mole Ratio 
+## Humidity Mole Ratio
 
 ```{r}
 #originally intended to calculate humidity here but instead chose to use the actual data set from NEON tracking humidity so decided to not use this caluclation and voided it from the code
@@ -50,8 +50,10 @@ ONAQTRUEAprilAtm <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/ONA
   #)
 ```
 
-#Humidity checks
-originally sperated by different towers, but changed to averaging all sensors
+## Humidity checks originally sperated by different towers, but changed to averaging all sensors
+
+## 
+
 ```{r}
 #data frame for 40 ft tower measurment of humidity
 ONAQHumid40 <- ONAQHumid %>% 
@@ -61,7 +63,6 @@ ONAQHumid40 <- ONAQHumid %>%
 ONAQHumid0 <- ONAQHumid %>% 
   filter(verticalPosition == "000")
 ```
-
 
 # Checks
 
@@ -75,7 +76,7 @@ ONAQHumid0 <- ONAQHumid %>%
 
 ```
 
-##weird zanazzi files
+## weird zanazzi files
 
 ```{r}
 #reads each of these files of individual sheets, but only need sheet 1 because these are all repeats individual collections
@@ -88,8 +89,9 @@ UtahLakeZanazziS4 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S4
 UtahLakeZanazziS5 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S5.csv")
 ```
 
-#Utah Lake Isotope Data Plots
-##### Boxplots
+## Utah Lake Isotope Data Plots 
+
+### Boxplots
 
 ```{r}
 
@@ -311,7 +313,7 @@ CombinedSamplesd2Hplt <- CombinedDF %>%
 CombinedSamplesd2Hplt
 ```
 
-##### Map Plot
+### Map Plot
 
 ```{r}
 #used lat and long measurments to place them on a map and get rid of any samples that were not actually from utah lake, did this because originally all data from water isotopes.org was filtered from lat and long but therefore wasn't sure how close to utah lake the values actually were, this allowed me to see what was actually happening with values
@@ -523,7 +525,7 @@ bscols(
 )
 ```
 
-##### d2H v. d18O
+### d2H v. d18O
 
 ```{r}
 #added d2H v. d18O plot to add to data comparison (didn't use in analysis decision as much)
@@ -580,8 +582,7 @@ ggplotly(Combinedd2Hvd18Oplt)
 Combinedd2Hvd18Oplt
 ```
 
-
-#Visualizing precip amounts
+## Visualizing precip amounts
 
 ```{r}
 #wanted to visualize the precip amount over the time
@@ -606,8 +607,7 @@ ViewPrecipAmount2022plt
 
 ```
 
-
-#Daytime v. Nighttime Code
+## Daytime v. Nighttime Code
 
 ```{r}
 SoilAvgTemp <- SoilAvgTemp %>% 
@@ -616,9 +616,24 @@ SoilAvgTemp <- SoilAvgTemp %>%
     by = "startDateTime"
   )
 
+# Sunrise_Sunset <- SoilRadiation %>%
+#   mutate(
+#     daylight = dirRadMean > 10
+#   ) %>%
+#   filter(daylight) %>%
+#   group_by(Date) %>%
+#   summarise(
+#     Sunrise = first(Time),
+#     Sunset = last(Time),
+#     .groups = "drop"
+#   )
+
+Daylight <- SoilRadiation %>% 
+  select(Daylight, endDateTime, startDateTime)
+
 ```
 
-#Analysis that isn't monte carlo
+# Analysis that isn't monte carlo
 
 ```{r}
 #average each month of precipitation isotopes for d18O and d2H
@@ -666,9 +681,7 @@ ONAQPrecipWeightedd2H<- ONAQPrecipAmountCombinedMonthAvg %>%
   )
 ```
 
-
-
-#### Fractionation Factor
+## Fractionation Factor
 
 $$\alpha = \frac{R_l}{R_v}$$
 
@@ -721,8 +734,7 @@ ONAQd2HCombinedMonthAvg <- ONAQd2HCombinedMonthAvg %>%
   
 ```
 
-
-#visualization plots
+# visualization plots
 
 ### Plots
 
@@ -775,8 +787,7 @@ ONAQd18OCombinedMonthAvgPlt <- ONAQd18OCombinedMonthAvg %>%
 ONAQd18OCombinedMonthAvgPlt
 ```
 
-
-#dS and dT visualization plots
+### dS and dT visualization plots
 
 ```{r}
 dS2Hplt <- ONAQdSdT %>% 

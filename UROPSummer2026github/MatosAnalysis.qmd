@@ -526,8 +526,8 @@ dAd2H_14day <- create_period_summary(
 ```
 
 ### dS and dT
-in matos et al. they use their own measurments for these values which are found in their zonodo, so had to load these in 
-similar to the zanazzi data, it came originally in lots or sheets that needed to seperate so the first code chunk below does that, however only needed the first sheet so went in maunally and named this what I wanted to call it and then just called that in here 
+
+in matos et al. they use their own measurments for these values which are found in their zonodo, so had to load these in similar to the zanazzi data, it came originally in lots or sheets that needed to seperate so the first code chunk below does that, however only needed the first sheet so went in maunally and named this what I wanted to call it and then just called that in here
 
 dS = isotope composition of soil water
 
@@ -547,6 +547,7 @@ for(sheet in sheets) {
 ```
 
 wanted file that manually sepearated out on my computer
+
 ```{r}
 ONAQdSdT <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQ.csv")
 ```
@@ -581,8 +582,6 @@ ONAQdS <- ONAQdSdT %>%
 ONAQdT <- ONAQdSdT %>% 
   select(Sample_ID, Site_ID, SampleDate, d18OdT, dT18O_SE, dT18O_Num, d2HdT, dT2H_SE, dT2H_Num)
 ```
-
-
 
 ## Monte Carlo Analysis
 

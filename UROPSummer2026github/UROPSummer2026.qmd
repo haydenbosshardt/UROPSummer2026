@@ -6,6 +6,8 @@ editor: visual
 
 ```{r}
 #did this so it would use files from UROP Summer 2026 but doesn't work and files to still automatically go to the git hub file, therefore need to specify when calling the file in individual code lines
+
+#don't need to run for code to work
 setwd("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026")
 ```
 
@@ -194,15 +196,13 @@ for(sheet in sheets) {
 
 ```{r}
 #loads in csv file for onaq atmospheric isotopes (again have to include the whole string because of weird file path stuff), TRUE label is not edited at all and is straight original version
-ONAQTRUEAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmos.csv")
+ONAQAtmos <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQAtmos.csv")
 
-ONAQTRUEPrecip <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecip.csv")
+ONAQPrecip <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecip.csv")
 
-ONAQTRUEHumid <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQRHumid.csv")
+ONAQHumid <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQRHumid.csv")
 
-ONAQPrecipAmount60 <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmount60.csv")
-
-ONAQPrecipAmountDaily <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmountDaily.csv")
+ONAQPrecipAmount <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/ONAQPrecipAmountDaily.csv")
 
 SoilRadiation <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/SoilRadiation.csv")
 
@@ -212,66 +212,58 @@ TripleAirTemp <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/TripleAirTem
 
 #data from water isotopes.org, no date restrictions, no type restrictions, restricted by lat and long to only get utah county data - date range is 1990 - 2024
 #wanted this data to get a picture of all data collected and then sample from this later for monte carlo
-AllUtahCountyData <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
+UtahLakeCounty <- read_csv("/Users/haydenbosshardt/Desktop/SRI/RFiles/UROP/UROPSummer2026/AllUtahCountyData.csv")
 
 #Zanazzi et al 2020 data, combination of all collected data so only read this csv file
-UtahLakeZanazziS1 <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S1.csv")
+UtahLakeZanazzi <- read_csv("~/Desktop/SRI/RFiles/UROP/UROPSummer2026/Table S1.csv")
 ```
 
-# Data Frame Processing 
+```{r}
+#creating function for averaging periods based on how many days you want to average from, need to put in which data frame to chose from, which value you are averaging, and the number of days in the averaging period
+#this is what matos et al. decided to do, however, not sure if want this for the Utah lake data, because they were dealing with a lot more data than this project and it might create a more accurate representation to average for either one day or not at all
+
+#calculates the mean, standard deviation, how many rows it averaged and start and end date
+create_period_summary <- function(data,
+                                  value_column,
+                                  period_days) {
+  start_date <- min(data$Date, na.rm = TRUE)
+  data %>%
+    mutate(
+      PeriodGroup =
+        floor(as.numeric(Date - start_date) / period_days)
+    ) %>%
+    group_by(PeriodGroup) %>%
+    summarize(
+      startDateTime = min(Date),
+      endDateTime = max(Date),
+      Mean = mean(.data[[value_column]], na.rm = TRUE),
+      SD = sd(.data[[value_column]], na.rm = TRUE),
+      N = sum(!is.na(.data[[value_column]])),
+      .groups = "drop"
+    )
+}
+```
+
+# Data Frame Processing
 
 ## Atmosphere
 
 ```{r}
 #modifies names of columns for easier work later and ease of understanding the data
-ONAQAtmos <- ONAQTRUEAtmos %>% 
+ONAQAtmos <- ONAQAtmos %>% 
   rename(
     "d18Omean" = "data.isoH2o.dlta18OH2o.mean",
     "d2Hmean" = "data.isoH2o.dlta2HH2o.mean",
-    "StartTime" = "timeBgn",
-    "EndTime" = "timeEnd",
-    "d18Omin" = "data.isoH2o.dlta18OH2o.min",
-    "d18Omax" = "data.isoH2o.dlta18OH2o.max",
-    "d2Hmin" = "data.isoH2o.dlta2HH2o.min",
-    "d2Hmax" = "data.isoH2o.dlta2HH2o.max",
-    "d18OSampleNumber" = "data.isoH2o.dlta18OH2o.numSamp",
-    "d2HSampleNumber" = "data.isoH2o.dlta2HH2o.numSamp",
-    "PressureMean" = "data.isoH2o.pres.mean",
-    "PressureMin" = "data.isoH2o.pres.min",
-    "PressureMax" = "data.isoH2o.pres.max",
-    "PressureSampleNum" = "data.isoH2o.pres.numSamp",
-    "TempMean" = "data.isoH2o.temp.mean",
-    "TempMin" = "data.isoH2o.temp.min",
-    "TempMax" = "data.isoH2o.temp.max",
-    "DryMoleRatioMean" = "data.isoH2o.rtioMoleDryH2o.mean",
-    "DryMoleRatioMin" = "data.isoH2o.rtioMoleDryH2o.min",
-    "DryMoleRatioMax" = "data.isoH2o.rtioMoleDryH2o.max",
-    "WetMoleRatioMean" = "data.isoH2o.rtioMoleWetH2o.mean",
-    "WetMoleRatioMin" = "data.isoH2o.rtioMoleWetH2o.min",
-    "WetMoleRatioMax" = "data.isoH2o.rtioMoleWetH2o.max"
+    "startDateTime" = "timeBgn",
+    "endDateTime" = "timeEnd"
   )
 
 #getting rid of unnecssary columns, specifically issue logs or repeats of data columns that came in a different format
 ONAQAtmos <- ONAQAtmos %>% 
-  select(horizontalPosition, verticalPosition, StartTime, EndTime, d18Omean, d18Omin, d18Omax, d18OSampleNumber, d2Hmean, d2Hmin, d2Hmax, d2HSampleNumber, PressureMean, PressureMin, PressureMax, PressureSampleNum, TempMean, TempMax, TempMin, DryMoleRatioMean, DryMoleRatioMin, DryMoleRatioMax, WetMoleRatioMean, WetMoleRatioMin, WetMoleRatioMax)
+  select(horizontalPosition, verticalPosition, startDateTime, endDateTime, d18Omean, d2Hmean)
 
-#adding row numbers
-ONAQAtmos <- ONAQAtmos %>% 
-  mutate(
-    Row = row_number()
-  )
-
-#adding date of collection (20XX-XX)
-ONAQAtmos <- ONAQAtmos %>%
-  mutate(
-    Date = format(StartTime, "%Y-%m")
-  )
 
 #getting rid of NA values
-
-#getting rid of anything NA for d18O sample number because this what i first found to be inconsistent
-ONAQAtmos <- ONAQAtmos %>% 
-  filter(d18OSampleNumber != 0)
 
 #gets rid of any NA with d18O isotope measurments as extra precaution
 ONAQAtmos <- ONAQAtmos %>% 
@@ -283,19 +275,48 @@ ONAQAtmos <- ONAQAtmos %>%
 
 ```
 
+```{r}
+#averaging by startDateTime so you get averages of horizontal and vertical position measurments
+ONAQAtmos <- ONAQAtmos %>% 
+  group_by(startDateTime) %>%
+  summarise(
+    d18Omean = mean(d18Omean, na.rm = TRUE),
+    d2Hmean = mean(d2Hmean, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#added in more accurate date column
+ONAQAtmos <- ONAQAtmos %>% 
+  mutate(
+    Date = as.Date(startDateTime)) 
+
+#adding row numbers
+ONAQAtmos <- ONAQAtmos %>% 
+  mutate(
+    Row = row_number()
+  )
+
+```
+
 ## Precipitation
 
 ```{r}
 #renamed columns to be easier to use and understand
-ONAQPrecip <- ONAQTRUEPrecip %>% 
+ONAQPrecip <- ONAQPrecip %>% 
   rename(
     "d18O" = "d18OWater",
     "d2H" = "d2HWater",
-    "d18Osd" = "d18OsdWater",
-    "d2Hsd" = "d2HsdWater",
-    "d2Huncert" = "d2HWaterUncert",
-    "d18Ouncert" = "d18OWaterUncert"
+    "startDateTime" = "collectDate"
   )
+
+#getting rid of unwanted columns (stuff to do with issue log or other variables not needed)
+ONAQPrecip <-  ONAQPrecip %>% 
+  select(startDateTime, d18O, d2H, startDateTime, d18OWaterUncert, d2HWaterUncert)
+
+#added in only date column
+ONAQPrecip <- ONAQPrecip %>% 
+  mutate(
+    Date = as.Date(startDateTime))
 
 #adding row numbers
 ONAQPrecip <- ONAQPrecip %>% 
@@ -303,105 +324,66 @@ ONAQPrecip <- ONAQPrecip %>%
     Row = row_number()
   )
 
-#adding date (20XX-XX)
-ONAQPrecip <- ONAQPrecip %>%
-  mutate(
-    Date = format(collectDate, "%Y-%m")
-  )
-
-
-#getting rid of unwanted columns (stuff to do with issue log or other variables not needed)
-ONAQPrecip <-  ONAQPrecip %>% 
-  select(collectDate, d18O, d2H, d18Osd, d2Hsd, d18Ouncert, d2Huncert, Row, Date)
-
+#didn't add second averaging function because only one sensor
 ```
 
 ## Humidity
 
 ```{r}
-#rename column names for easier use and understanding
-ONAQHumid <- ONAQTRUEHumid %>% 
+#rename column names for easier use and understanding, most didn't need to be renamed because already easy to use and in a format that was consistent
+ONAQHumid <- ONAQHumid %>% 
   rename(
-    "StartTime" = "startDateTime",
-    "EndTime" = "endDateTime",
-    "RHMin" = "RHMinimum",
-    "RHMax" = "RHMaximum",
     "MeanTempC" = "tempRHMean",
-    "MinTempC" = "tempRHMinimum",
-    "MaxTempC" = "tempRHMaximum",
-    "dewTempMin" = "dewTempMinimum",
-    "dewTempMax" = "dewTempMaximum"
   )
 
-#adding fahrenheit
-ONAQHumid <- ONAQHumid %>% 
-  mutate(
-    Temp_F = MeanTempC * (9/5) + 32)
 
-#adding kelvin
+#average humidity measurments from multiple different sensors by start of collection time, sensed from different heights so averaged to be one measurment
+ONAQHumid <- ONAQHumid %>% 
+  group_by(startDateTime) %>%
+  summarise(
+    RHMean = mean(RHMean, na.rm = TRUE),
+    dewTempMean = mean(dewTempMean, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#added in more accurate date time column
 ONAQHumid <- ONAQHumid %>% 
   mutate(
-    Temp_Kelvin = MeanTempC + 273.15)
-#kelvin is used later for other calculations, and added fahrenheit to better understand the data
+    Date = as.Date(startDateTime)) 
 
 #adding row numbers
 ONAQHumid <- ONAQHumid %>% 
   mutate(
     Row = row_number()
   )
-
-#adding date (20XX-XX)
-ONAQHumid <- ONAQHumid %>%
-  mutate(
-    Date = format(StartTime, "%Y-%m"))
-
-#choosing wanted columns to keep in df, gettind rid of issue log or random data collected that isn't needed
-ONAQHumid <- ONAQHumid %>% 
-  select(
-    StartTime, EndTime, horizontalPosition, verticalPosition, RHMean, RHMin, RHMax, RHVariance, RHNumPts, RHExpUncert, RHStdErMean, MeanTempC, MinTempC, MaxTempC, tempRHVariance, tempRHNumPts, tempRHExpUncert, tempRHStdErMean, dewTempMean, dewTempMin, dewTempMax, Row, Date, Temp_F, Temp_Kelvin
-  )
 ```
 
+## Amount Precip 
+
 ```{r}
-#average humidity measurments from multiple different sensors by start of collection time
-ONAQHumid <- ONAQHumid %>% 
+#renamed to be consistent
+ONAQPrecipAmount <- ONAQPrecipAmount %>% 
+  rename(
+    "startDateTime" = "date"
+  )
+
+ONAQPrecipAmount <- ONAQPrecipAmount %>% 
   group_by(startDateTime) %>%
   summarise(
-    RHMean = mean(RHMean, na.rm = TRUE),
+    precipBulk = mean(precipBulk, na.rm = TRUE),
+    precipBulkExpUncert = mean(precipBulkExpUncert, na.rm = TRUE),
     .groups = "drop"
   )
 
 #added in more accurate date time column
-RelativeHumidity <- RelativeHumidity %>% 
+ONAQPrecipAmount <- ONAQPrecipAmount %>% 
   mutate(
-    DateTime = ymd_hms(startDateTime),
-    Date = as.Date(DateTime)) %>% 
-  filter(Daylight == TRUE)
-```
+    Date = as.Date(startDateTime))
 
-## Amount Precip equation for calculations:
-
-$$\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}$$
-
-```{r}
-#need to fix for monte carlo analysis
-#chose to mostly use daily measurments to deal with less data and it was more consistent with other data frames and other data averaging periods
-#in daily precip measurments df - get rid of any days that have 0 precipitation
-ONAQPrecipAmountCompare <- ONAQPrecipAmountDaily %>% 
-  filter(precipBulk != 0)
-```
-
-```{r}
-#renamed to be consistent
-ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
-  rename(
-    "CollectionDate" = "date"
-  )
-
-#Adding Date
-ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>% 
+#adding in row numbers
+ONAQPrecipAmount <- ONAQPrecipAmount %>% 
   mutate(
-    Date = format(CollectionDate, "%Y-%m")
+    Row = row_number()
   )
 ```
 
@@ -412,43 +394,33 @@ ONAQPrecipAmountCompare <- ONAQPrecipAmountCompare %>%
 might not need if dealing with lake evaporation which does not fluctuate too muc and fluctuations can be taken into consideration with either an average or with monte carlo analysis
 
 ```{r}
+
+SoilRadiation <- SoilRadiation %>% 
+  group_by(startDateTime) %>%
+  summarise(
+    difRadMean = mean(difRadMean, na.rm = TRUE),
+    dirRadMean = mean(dirRadMean, na.rm = TRUE),
+    gloRadMean = mean(gloRadMean, na.rm = TRUE),
+    sunPres = mean(sunPres, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#adding in daylight column - might not need/use
 SoilRadiation <- SoilRadiation %>% 
   mutate(
     Daylight = difRadMean > 10
   )
 
-Daylight <- SoilRadiation %>% 
-  select(Daylight, endDateTime, startDateTime)
+#making date column
+SoilRadiation <- SoilRadiation %>%
+  mutate(
+     Date = as.Date(startDateTime)
+   )
 
-
-```
-
-```{r}
-# #making date column
-# SoilRadiation <- SoilRadiation %>%
-#   mutate(
-#     Date = as.Date(endDateTime)
-#   )
-#   
-# #making date into time
-# SoilRadiation <- SoilRadiation %>% 
-#   mutate(
-#     Time = format(endDateTime, "%H:%M:%S")
-#   )
-```
-
-```{r}
-# Sunrise_Sunset <- SoilRadiation %>%
-#   mutate(
-#     daylight = dirRadMean > 10
-#   ) %>%
-#   filter(daylight) %>%
-#   group_by(Date) %>%
-#   summarise(
-#     Sunrise = first(Time),
-#     Sunset = last(Time),
-#     .groups = "drop"
-#   )
+SoilRadiation <-  SoilRadiation %>% 
+  mutate(
+    Row = row_number()
+  )
 ```
 
 ## Air Temperature
@@ -473,7 +445,7 @@ TripleAvgAirTemp <- TripleAirTemp %>%
 
 ```{r}
 #combined the single and triple aspirated air temps into one df 
-CombinedAvgAirTemp <- SingleAvgAirTemp %>% 
+ONAQAirTemp <- SingleAvgAirTemp %>% 
   left_join(
     TripleAvgAirTemp %>% select(startDateTime, TripleMeanAirTemp),
     by = "startDateTime"
@@ -481,29 +453,30 @@ CombinedAvgAirTemp <- SingleAvgAirTemp %>%
 ```
 
 ```{r}
-#added in the daylight df, again to use later for only using daytime values in calculations
-CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
-  left_join(
-    Daylight %>% select(startDateTime, Daylight),
-    by = "startDateTime"
-  )
-```
-
-```{r}
 #created new column in this df that was the average of the single and triple aspirated air temps
-CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+ONAQAirTemp <- ONAQAirTemp %>% 
   mutate(
-    AvgAirTemp = ((SingleMeanAirTemp + TripleMeanAirTemp)/2)
+    AvgAirTemp_C = ((SingleMeanAirTemp + TripleMeanAirTemp)/2)
   )
 ```
 
 ```{r}
 #added in more accurate date and time column
-CombinedAvgAirTemp <- CombinedAvgAirTemp %>% 
+ONAQAirTemp <- ONAQAirTemp %>% 
   mutate(
-    DateTime = ymd_hms(startDateTime),
-    Date = as.Date(DateTime)) %>% 
-  filter(Daylight == TRUE)
+    Date = as.Date(startDateTime))
+
+#adding fahrenheit
+ONAQAirTemp <- ONAQAirTemp %>% 
+  mutate(
+    Temp_F = AvgAirTemp_C * (9/5) + 32)
+
+#adding kelvin
+ONAQAirTemp <- ONAQAirTemp %>% 
+  mutate(
+    Temp_Kelvin = AvgAirTemp_C + 273.15)
+#kelvin is used later for other calculations, and added fahrenheit to better understand the data
+
 ```
 
 ## Utah Lake Isotopes
@@ -512,39 +485,41 @@ CombinedAvgAirTemp <- CombinedAvgAirTemp %>%
 
 ```{r}
 #renaming some columns for ease and understanding
-AllUtahCountyData <- AllUtahCountyData %>%
+UtahLakeCounty <- UtahLakeCounty %>%
   rename(
   "Elevation" = "Elevation_mabsl",
   "SD2H" = "d2H_Analytical_SD",
-  "SD18O" = "d18O_Analytical_SD"
+  "SD18O" = "d18O_Analytical_SD",
+  "startDateTime" = "Collection_Date"
 )
 
 #getting rid of unnecessary columns that are unneccessary
-AllUtahCountyData <- AllUtahCountyData %>% 
-  select(-Start_Date, -Start_Time_Zone, -Collection_Time_Zone, -Phase, -Depth_meters, -Sample_Comments, -D17O, -D17O_Analytical_SD, -WI_Analysis_Source, -Site_Comments,  )
+UtahLakeCounty <- UtahLakeCounty %>% 
+  select(-Start_Date, -Start_Time_Zone, -Collection_Time_Zone, -Phase, -Depth_meters, -Sample_Comments, -D17O, -D17O_Analytical_SD, -WI_Analysis_Source, -Site_Comments)
 ```
 
 ```{r}
 #creating main df, getting rid of sample types named below only leaving lake, river, and spring samples
-UtahLakeSamples <- AllUtahCountyData %>% 
+UtahLakeCounty <- UtahLakeCounty %>% 
   filter(!Type %in% c("Tap", "Milk", "Sprinkler", "Ground"))
 
 ```
 
 ```{r}
 #adding date (20XX-XX)
-UtahLakeSamples <- UtahLakeSamples %>%
+UtahLakeCounty <- UtahLakeCounty %>%
   mutate(
-    Date = format(Collection_Date, "%Y-%m"))
+    Date = as.Date(startDateTime))
 
+#removed because wasn't necessary for analysis but originally had for looking at graphs
 #adding Year column
-UtahLakeSamples <- UtahLakeSamples %>% 
-  mutate(
-    Year = format(Collection_Date, "%Y")
-  )
+# UtahLakeSamples <- UtahLakeSamples %>% 
+#   mutate(
+#     Year = format(startDateTime, "%Y")
+#   )
 
 #creating DONOTUSE row
-UtahLakeSamples <- UtahLakeSamples %>% 
+UtahLakeCounty <- UtahLakeCounty %>% 
   mutate(
     DONOTUSE = FALSE
   )
@@ -556,12 +531,12 @@ UtahLakeSamples <- UtahLakeSamples %>%
 ```{r}
 
 #rename func to make easier and consistent columns
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+UtahLakeZanazzi <- UtahLakeZanazzi %>% 
   rename(
     "Site_Name" = "...2",
     "Latitude" = "...3",
     "Longitude" = "...4",
-    "Collection_Date" = "...5",
+    "startDateTime" = "...5",
     "d2H" = "...6",
     "SD2H" = "...7",
     "d18O" = "...8",
@@ -569,59 +544,44 @@ UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
   )
 
 #if d2h is NA, don't include
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+UtahLakeZanazzi <- UtahLakeZanazzi %>% 
   filter(!is.na(d2H)) 
 #gets rid of first row because it was either blank or had column labels
-UtahLakeZanazziS1 <- UtahLakeZanazziS1[-c(1), ]
+UtahLakeZanazzi <- UtahLakeZanazzi[-c(1), ]
 
 #got rid of these columns because they were werid format issues
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% select(-`Table S1. Biweekly Samples`)
-```
+UtahLakeZanazzi <- UtahLakeZanazzi %>% select(-`Table S1. Biweekly Samples`)
 
-```{r}
 #turns collection data into a numeric value becasue originally was character 
-UtahLakeZanazziS1$Collection_Date <- as.numeric(UtahLakeZanazziS1$Collection_Date)
+UtahLakeZanazzi$startDateTime <- as.numeric(UtahLakeZanazzi$startDateTime)
 
 #then turns collection data into data format, excel file did something weird where it was a weird number that represented number of days since dec. 30th 1899 so switched over to actual data format
-UtahLakeZanazziS1$Collection_Date <- as.Date(UtahLakeZanazziS1$Collection_Date, origin = "1899-12-30")
+UtahLakeZanazzi$startDateTime <- as.Date(UtahLakeZanazzi$startDateTime, origin = "1899-12-30")
 
 ```
 
 ```{r}
 
-#adding date (20XX-XX)
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
-  mutate(
-    Date = format(Collection_Date, "%Y-%m"))
-
-#adding Year column
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
-  mutate(
-    Year = format(Collection_Date, "%Y")
-  )
-#making year not a continuous value
-UtahLakeZanazziS1$Year <- as.factor(UtahLakeZanazziS1$Year)
-
 #making everything numeric, because everything started as a character value
-UtahLakeZanazziS1$d18O <- as.numeric(UtahLakeZanazziS1$d18O)
+UtahLakeZanazzi$d18O <- as.numeric(UtahLakeZanazzi$d18O)
 
-UtahLakeZanazziS1$d2H <- as.numeric(UtahLakeZanazziS1$d2H)
+UtahLakeZanazzi$d2H <- as.numeric(UtahLakeZanazzi$d2H)
 
-UtahLakeZanazziS1$Latitude <- as.numeric(UtahLakeZanazziS1$Latitude)
+UtahLakeZanazzi$Latitude <- as.numeric(UtahLakeZanazzi$Latitude)
 
-UtahLakeZanazziS1$Longitude <- as.numeric(UtahLakeZanazziS1$Longitude)
+UtahLakeZanazzi$Longitude <- as.numeric(UtahLakeZanazzi$Longitude)
 
-UtahLakeZanazziS1$SD2H <- as.numeric(UtahLakeZanazziS1$SD2H)
+UtahLakeZanazzi$SD2H <- as.numeric(UtahLakeZanazzi$SD2H)
 
-UtahLakeZanazziS1$SD18O <- as.numeric(UtahLakeZanazziS1$SD18O)
+UtahLakeZanazzi$SD18O <- as.numeric(UtahLakeZanazzi$SD18O)
 
 
 #creating type row, this made it easier to read to the utah county data
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>% 
+UtahLakeZanazzi <- UtahLakeZanazzi %>% 
   mutate(Type = "Zanazzi")
 
 #creating DONOTUSE row
-UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
+UtahLakeZanazzi <- UtahLakeZanazzi %>%
   mutate(
     DONOTUSE = FALSE
   )
@@ -632,7 +592,7 @@ UtahLakeZanazziS1 <- UtahLakeZanazziS1 %>%
 
 ```{r}
 #creating combined df, also added on row with row number so could get rid of unwanted values through donotuse and organization purposes
-CombinedDF <- bind_rows(UtahLakeSamples, UtahLakeZanazziS1) %>% 
+UtahLakeWaterSamples <- bind_rows(UtahLakeCounty, UtahLakeZanazzi) %>% 
   mutate(
     Row = row_number()
   )
@@ -640,9 +600,239 @@ CombinedDF <- bind_rows(UtahLakeSamples, UtahLakeZanazziS1) %>%
 
 ```{r}
 #getting rid of far away sites or other weird #s, from map below 
-LakeWaterIsotopes <- CombinedDF %>% 
+UtahLakeWaterSamples <- UtahLakeWaterSamples %>% 
       mutate(DONOTUSE = Row %in% c(9, 19, 7, 18, 8, 17, 21 
           , TRUE, DONOTUSE))
 ```
 
 # Analysis
+
+## Weighted Precipitation
+
+$$\delta_w = \frac{\sum_{i=1}^{n} P_i \delta_i}{\sum_{i=1}^{n} P_i}$$
+
+## Setting up dfs for MC
+
+```{r}
+#1 day averages for each continuously measured value
+ONAQAtmosd18O_1day <- create_period_summary(
+  ONAQAtmos,
+  "d18Omean",
+  1
+)
+
+ONAQAtmosd2H_1day <- create_period_summary(
+  ONAQAtmos,
+  "d2Hmean",
+  1
+)
+
+ONAQHumid_1day <- create_period_summary(
+  ONAQHumid,
+  "RHMean",
+  1
+)
+
+ONAQAirTempC_1day <- create_period_summary(
+  ONAQAirTemp,
+  "AvgAirTemp_C",
+  1
+)
+
+ONAQAirTempKelvin_1day <- create_period_summary(
+  ONAQAirTemp,
+  "Temp_Kelvin",
+  1
+)
+
+ONAQSoilRad_1day <- create_period_summary(
+  SoilRadiation,
+  "difRadMean",
+  1
+)
+
+#7 day averages of each continuous values - thought this would be more impactful in down the line analysis
+ONAQAtmosd18O_7day <- create_period_summary(
+  ONAQAtmos,
+  "d18Omean",
+  7
+)
+
+ONAQAtmosd2H_7day <- create_period_summary(
+  ONAQAtmos,
+  "d2Hmean",
+  7
+)
+
+ONAQHumid_7day <- create_period_summary(
+  ONAQHumid,
+  "RHMean",
+  7
+)
+
+ONAQAirTempC_7day <- create_period_summary(
+  ONAQAirTemp,
+  "AvgAirTemp_C",
+  7
+)
+
+ONAQAirTempKelvin_7day <- create_period_summary(
+  ONAQAirTemp,
+  "Temp_Kelvin",
+  7
+)
+
+ONAQSoilRad_7day <- create_period_summary(
+  SoilRadiation,
+  "difRadMean",
+  7
+)
+```
+
+## Creating MC for each variable
+
+```{r}
+
+#running monte carlo on atmospheric oxygen-18 isotopes
+MC_dAd18O <- vector(
+  mode = "list",
+  length = nrow(ONAQAtmosd18O_1day)
+)
+for(i in 1:nrow(ONAQAtmosd18O_1day)){
+  MC_dAd18O[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQAtmosd18O_1day$Mean[i],
+    sd = ONAQAtmosd18O_1day$SD[i]
+  )}
+
+
+#running monte carlo on atmoshperic hydrogen-2 isotopes
+MC_dAd2H <- vector(
+  mode = "list",
+  length = nrow(ONAQAtmosd2H_1day)
+)
+for(i in 1:nrow(ONAQAtmosd2H_1day)){
+  MC_dAd2H[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQAtmosd2H_1day$Mean[i],
+    sd = ONAQAtmosd2H_1day$SD[i]
+  )}
+
+#monte carlo for umidity measurments
+MC_Humid <- vector(
+  mode = "list",
+  length = nrow(ONAQHumid_1day)
+)
+for(i in 1:nrow(ONAQHumid_1day)){
+  
+  MC_Humid[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQHumid_1day$Mean[i],
+    sd = ONAQHumid_1day$SD[i]
+  )}
+
+#monte carlo for air temp in degrees celsius
+MC_AirTempC <- vector(
+  mode = "list",
+  length = nrow(ONAQAirTempC_1day)
+)
+for(i in 1:nrow(ONAQAirTempC_1day)){
+  
+  MC_AirTempC[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQAirTempC_1day$Mean[i],
+    sd = ONAQAirTempC_1day$SD[i]
+  )}
+
+#monte carlo for air temp in degrees kelvin
+MC_AirTempKelvin <- vector(
+  mode = "list",
+  length = nrow(ONAQAirTempKelvin_1day)
+)
+for(i in 1:nrow(ONAQAirTempKelvin_1day)){
+  
+  MC_AirTempKelvin[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQAirTempKelvin_1day$Mean[i],
+    sd = ONAQAirTempKelvin_1day$SD[i]
+  )}
+
+#monte carlo for soil radiation
+MC_SoilRad <- vector(
+  mode = "list",
+  length = nrow(ONAQSoilRad_1day)
+)
+for(i in 1:nrow(ONAQSoilRad_1day)){
+  
+  MC_SoilRad[[i]] <- rnorm(
+    n = 1000,
+    mean = ONAQSoilRad_1day$Mean[i],
+    sd = ONAQSoilRad_1day$SD[i]
+  )}
+
+
+#monte carlo for lake isotopes oxygen 18
+MC_UtahLaked18O <- vector(
+  mode = "list",
+  length = nrow(UtahLakeWaterSamples)
+)
+for(j in 1:nrow(UtahLakeWaterSamples)){
+  
+  MC_UtahLaked18O[[j]] <- rnorm(
+    n = 1000,
+    mean = UtahLakeWaterSamples$d18O[j],
+    sd = UtahLakeWaterSamples$SD18O[j]
+  )}
+
+#monte carlo for lake isotopes hydrogen 2
+MC_UtahLaked2H <- vector(
+  mode = "list",
+  length = nrow(UtahLakeWaterSamples)
+)
+for(j in 1:nrow(UtahLakeWaterSamples)){
+  
+  MC_UtahLaked2H[[j]] <- rnorm(
+    n = 1000,
+    mean = UtahLakeWaterSamples$d2H[j],
+    sd = UtahLakeWaterSamples$SD2H[j]
+  )}
+```
+
+## Alpha plus
+
+$$
+\alpha^+_{d18O}= exp[-\frac{7.685}{10^3}+\frac{6.7123}{(273.15+T)}-\frac{1666.4}{{(273.15+T)}^{2}}+\frac{350410}{{(273.15+T)}^{3}}]
+$$
+
+```{r}
+MC_alphastar_d18O <- vector("list", length(ONAQAirTempKelvin_1day))
+
+for(i in 1:nrow(ONAQAirTempKelvin_1day)) {
+
+  MC_alphastar_d18O[[i]] <- exp(
+    -7.685/10^3 +
+    6.7123/(MC_AirTempKelvin[[i]]) -
+    1666.4/(MC_AirTempKelvin[[i]]^2) +
+    350410/(MC_AirTempKelvin[[i]]^3)
+  )
+
+}
+```
+
+$$
+\alpha^+_{d2H} = exp[1158.8*(\frac{(273.15 + T)^3}{10^{12}}-1620.1(\frac{(273.15+T)^2}{10^9})+794.84(\frac{(273.15+T)}{10^6})-\frac{161.04}{10^3}+\frac{2999200}{(273.15+T)^3}]
+$$
+
+```{r}
+MC_alphastar_d2H <- vector("list", length(ONAQAirTempKelvin_1day))
+
+for(i in 1:nrow(ONAQAirTempKelvin_1day)) {
+  MC_alphastar_d2H[[i]] <- exp(
+    1158.8 * ((MC_AirTempKelvin[[i]]^3)/10^12) -
+      1620.1 *((MC_AirTempKelvin[[i]]^2)/10^9) +
+      794.84 *((MC_AirTempKelvin[[i]])/10^6) - 
+      161.04/(10^3) +
+      2999200/((MC_AirTempKelvin[[i]])^3)
+  )
+}
+```
